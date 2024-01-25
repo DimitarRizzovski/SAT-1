@@ -381,7 +381,6 @@ class MyGui(QMainWindow):
             if view.styleSheet() == "border: 2px solid blue":
                 self.selectedPage = view
                 break
-
         equation_type = item.text()
         if equation_type == "  3A Expanding and collecting like terms":
             try:
@@ -389,9 +388,42 @@ class MyGui(QMainWindow):
                 # Load UI file
                 dialog = loadUi('questiondialog.ui')
 
+                # Create a QGraphicsScene
+                scene = QGraphicsScene()
+
+                # Set the scene for questionView
+                dialog.questionView.setScene(scene)
+
+                try:
+                    # Create a QGraphicsTextItem with plain text
+                    text_item = QGraphicsTextItem("This is some plain text")
+
+                    # Set the position of the text_item in the scene to the top left corner
+                    text_item.setPos(0, 0)
+
+                    # Add the text_item to the scene
+                    scene.addItem(text_item)
+                except Exception as e:
+                    print(f"An error occurred: {e}")
                 # Set validator for numofqueLine
                 validator = QIntValidator(0, 99)  # Allow numbers from 0 to 99
                 dialog.numofqueLine.setValidator(validator)
+
+                # Disable the buttons initially
+                dialog.okButton.setEnabled(False)
+                dialog.addButton.setEnabled(False)
+
+                # Enable the buttons when numofqueLine is not empty
+                def enable_buttons():
+                    if dialog.numofqueLine.text():
+                        dialog.okButton.setEnabled(True)
+                        dialog.addButton.setEnabled(True)
+                    else:
+                        dialog.okButton.setEnabled(False)
+                        dialog.addButton.setEnabled(False)
+
+                # Connect the textChanged signal to the enable_buttons slot
+                dialog.numofqueLine.textChanged.connect(enable_buttons)
 
                 # Create a button group
                 button_group = QButtonGroup()
@@ -417,28 +449,35 @@ class MyGui(QMainWindow):
 
                 # Define a function to process the equation and close the dialog
                 def process_equation_and_close():
+                    add_equation()
                     dialog.close()
 
                 # Define a function to add the equation without closing the dialog
                 def add_equation():
-                    difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
+                    # Get the number of equations to generate from numofqueLine
+                    num_of_equations = int(dialog.numofqueLine.text())
 
-                    # Create a QGraphicsTextItem with the equation text
-                    equation_item = EditableTextItem(equation_text, difficulty)
-                    equation_item.setPlainText(equation_text)
-                    equation_item.answer = answer
 
-                    # Add the QGraphicsTextItem to the scene of the selected page
-                    if self.selectedPage is not None:
-                        self.selectedPage.scene().addItem(equation_item)
+                    for _ in range(num_of_equations):
+                        difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
 
-                        # Generate random coordinates within the bounds of the scene
-                        x = random.uniform(0, self.selectedPage.scene().width() - equation_item.boundingRect().width())
-                        y = random.uniform(0,
-                                           self.selectedPage.scene().height() - equation_item.boundingRect().height())
+                        # Create a QGraphicsTextItem with the equation text
+                        equation_item = EditableTextItem(equation_text, difficulty)
+                        equation_item.setPlainText(equation_text)
+                        equation_item.answer = answer
 
-                        # Set the position of the equation_item in the scene
-                        equation_item.setPos(x, y)
+                        # Add the QGraphicsTextItem to the scene of the selected page
+                        if self.selectedPage is not None:
+                            self.selectedPage.scene().addItem(equation_item)
+
+                            # Generate random coordinates within the bounds of the scene
+                            x = random.uniform(0,
+                                               self.selectedPage.scene().width() - equation_item.boundingRect().width())
+                            y = random.uniform(0,
+                                               self.selectedPage.scene().height() - equation_item.boundingRect().height())
+
+                            # Set the position of the equation_item in the scene
+                            equation_item.setPos(x, y)
 
                     # Reset easyButton to checked
                     dialog.easyButton.setChecked(True)
