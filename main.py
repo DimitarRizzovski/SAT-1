@@ -1,23 +1,12 @@
 from PyQt6.QtWidgets import *
 from PyQt6.uic import loadUi
-from PyQt6.QtGui import QPainter, QImage, QPixmap, QIntValidator
+from PyQt6.QtGui import QPainter, QPixmap, QIntValidator, QPageSize
 from PyQt6.QtPrintSupport import QPrinter
-from PyQt6.QtGui import QPageSize
-from PyQt6.QtWidgets import QGraphicsTextItem
 from PyQt6.QtCore import Qt, QPointF
 import mgen
 import random
-from PyQt6.QtWidgets import QGraphicsPixmapItem
-from PyQt5.QtGui import QImage, QPixmap
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.figure import Figure
-import io
-from PyQt6.QtCore import QPointF
-from PyQt6.QtWidgets import QGraphicsPixmapItem, QDialog, QVBoxLayout, QLabel, QPushButton
 from matplotlib import pyplot as plt
 from io import BytesIO
-from PyQt6.QtGui import QPixmap
-
 
 class EditableTextItem(QGraphicsPixmapItem):
     def __init__(self, equation_type, difficulty, *args, **kwargs):
