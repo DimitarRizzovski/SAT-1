@@ -64,7 +64,6 @@ class EditableTextItem(QGraphicsPixmapItem):
         else:
             super().mouseMoveEvent(event)
 
-
     def setPlainText(self, text):
         self.text = text
         fig = plt.figure(figsize=(6, 5))  # Adjust the figure size here
@@ -386,6 +385,7 @@ class MyGui(QMainWindow):
         equation_type = item.text()
         if equation_type == "  3A Expanding and collecting like terms":
             try:
+                diff = "Easy"
                 # Load UI file
                 dialog = loadUi('questiondialog.ui')
 
@@ -401,6 +401,14 @@ class MyGui(QMainWindow):
                 button_group.addButton(dialog.mediumButton)
                 button_group.addButton(dialog.hardButton)
 
+                def difficultybuttons(d):
+                    nonlocal diff  # This allows us to modify the 'diff' variable in the outer scope
+                    diff = d
+
+                dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
+                dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))
+                dialog.hardButton.clicked.connect(lambda: difficultybuttons("Hard"))
+
                 # Set easyButton as the default checked button
                 dialog.easyButton.setChecked(True)
 
@@ -409,23 +417,11 @@ class MyGui(QMainWindow):
 
                 # Define a function to process the equation and close the dialog
                 def process_equation_and_close():
-                    # Process the equation here
-                    # ...
-
-                    # Close the dialog
                     dialog.close()
 
                 # Define a function to add the equation without closing the dialog
                 def add_equation():
-                    # Get the selected difficulty level
-                    if dialog.easyButton.isChecked():
-                        difficulty = "Easy"
-                    elif dialog.mediumButton.isChecked():
-                        difficulty = "Medium"
-                    else:  # dialog.hardButton must be checked
-                        difficulty = "Hard"
-
-                    difficulty, equation_text, answer = mgen.generate_linear_equation(difficulty)
+                    difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
 
                     # Create a QGraphicsTextItem with the equation text
                     equation_item = EditableTextItem(equation_text, difficulty)
