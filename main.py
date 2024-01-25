@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 from io import BytesIO
 from PyQt6.QtGui import QPixmap
 
+
 class EditableTextItem(QGraphicsPixmapItem):
     def __init__(self, equation_type, difficulty, *args, **kwargs):
         super().__init__(*args, **kwargs)
