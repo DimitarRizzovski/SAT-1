@@ -1,123 +1,21 @@
 from PyQt6.QtWidgets import *
 from PyQt6.uic import loadUi
-from PyQt6.QtGui import QPixmap, QIntValidator
-from PyQt6.QtCore import QPointF
+from PyQt6.QtGui import QPainter, QPixmap, QIntValidator, QPageSize
+from PyQt6.QtPrintSupport import QPrinter
+from PyQt6.QtCore import Qt, QPointF
+from PyQt6.uic.properties import QtCore
+
 import mgen
+import random
 from matplotlib import pyplot as plt
 from io import BytesIO
-import random
-import Crand
-from sympy import factor, expand
-import sympy as sp
-
-"""Math Generation Equations"""
-def custom_expand(original_equation):
-    expanded_expression = sp.expand(original_equation)
-    expanded_expression_str = str(expanded_expression).replace('**', '^').replace('*', '')
-    terms = expanded_expression_str.split(' + ')
-    terms.sort(key=lambda term: 'x^2' not in term)
-    return ' + '.join(terms)
-def generate_linear_equation(difficulty):
-    def expand_linear(original_equation):
-        expanded_expression = sp.expand(original_equation)
-        expanded_expression_str = str(expanded_expression).replace('**', '^').replace('*', '')
-        return expanded_expression_str
-
-    def generate_equation_easy():
-        x, y = sp.symbols('x y')
-        answer = f"({Crand.non_zero_randint(-20, 20)}*x {random.choice(['+', '-'])} {Crand.non_zero_randint(0, 20)}*y) {random.choice(['+', '-'])} ({Crand.non_zero_randint(-20, 20)}*x {random.choice(['+', '-'])} {Crand.non_zero_randint(0, 20)}*y)"
-        expanded_equation = expand_linear(answer)
-        answer = str(answer).replace('**', '^').replace('*', '')
-        return answer, expanded_equation
-
-    def generate_equation_medium():
-        x = sp.symbols('x')
-        answer = f"{random.randint(-10, 10)}*x*({random.randint(-10, 10)}*x {random.choice(['+', '-'])} {random.randint(10, 20)})"
-        expanded_equation = expand_linear(answer)
-        answer = str(answer).replace('**', '^').replace('*', '')
-        return answer, expanded_equation
-
-    def generate_equation_hard():
-        x = sp.symbols('x')
-        answer = f"{Crand.non_zero_randint(-10, 10)}*x*({Crand.non_zero_randint(-10, 10)}*x {random.choice(['+', '-'])} {Crand.non_zero_randint(10, 20)}) {random.choice(['+', '-'])} {Crand.non_zero_randint(0, 10)}*x*({Crand.non_zero_randint(-10, 10)}*x {random.choice(['+', '-'])} {Crand.non_zero_randint(10, 20)})"
-        expanded_equation = expand_linear(answer)
-        answer = str(answer).replace('**', '^').replace('*', '')
-        return answer, expanded_equation
-
-    if difficulty == "Easy":
-        answer, expanded_equation = generate_equation_easy()
-    elif difficulty == "Medium":
-        answer, expanded_equation = generate_equation_medium()
-    elif difficulty == "Hard":
-        answer, expanded_equation = generate_equation_hard()
-    else:
-        answer, expanded_equation = "Unknown difficulty", None
-
-    return difficulty, answer, expanded_equation
-
-def generate_factorise_equation(difficulty):
-    def generate_equation(lower, upper):
-        x = sp.symbols('x')
-        num1, num2 = Crand.non_zero_randint(lower, upper), Crand.non_zero_randint(lower, upper)
-        original_equation = (x + num1) * (x + num2)
-        expanded_equation = expand(original_equation)
-        factorized_equation = factor(expanded_equation)
-        expanded_equation = str(expanded_equation).replace("**","^").replace("*", "")
-        factorized_equation = str(factorized_equation).replace("**","^").replace("*", "")
-        return expanded_equation, factorized_equation  # Flip the order here
-    def generate_equation_hard():
-        x = sp.symbols('x')
-        original_equation = f"({Crand.non_zero_randint(-5, 5)}*x {random.choice(['+', '-'])} {random.randint(1, 5)})*({Crand.non_zero_randint(-5, 5)}*x {random.choice(['+', '-'])} {random.randint(1, 5)})"
-        expanded_equation = expand(original_equation)
-        factorized_equation = factor(expanded_equation)
-        expanded_equation = str(expanded_equation).replace("**", "^").replace("*", "")
-        factorized_equation = str(factorized_equation).replace("**", "^").replace("*", "")
-        return expanded_equation, factorized_equation  # Flip the order here
-
-    if difficulty == "Easy":
-        equation_text, answer = generate_equation(1, 5)
-    elif difficulty == "Medium":
-        equation_text, answer = generate_equation(-5, 5)
-    elif difficulty == "Hard":
-        equation_text, answer = generate_equation_hard()
-    else:
-        equation_text, answer = "Unknown difficulty", None
-
-    return difficulty, equation_text, answer
-
-
-def construct_quadratic(difficulty):
-    def generate_equation(lower, upper):
-        x = sp.symbols('x')
-        x1, x2 = Crand.non_zero_randint(lower, upper), Crand.non_zero_randint(lower, upper)
-        answer = (x - x1) * (x - x2)
-        return answer, (x1, x2)
-    def generate_equation_medium_hard(lower, upper):
-        x = sp.symbols('x')
-        x1, x2 = Crand.non_zero_one_randint(lower, upper), Crand.non_zero_one_randint(lower, upper)
-        answer = (x - x1) * (x - x2)
-        return answer, (x1, x2)
-
-    if difficulty == "Easy":
-        equation, answer = generate_equation(1, 5)
-    elif difficulty == "Medium":
-        equation, answer = generate_equation_medium_hard(-5, 5)
-    elif difficulty == "Hard":
-        equation, answer = generate_equation_medium_hard(-10, 10)
-    else:
-        equation, answer = "Unknown difficulty", None
-
-    equation_text = sp.expand(equation)
-    equation_text = str(equation_text).replace("**", "^").replace("*", "")
-
-    return difficulty, equation_text, answer
 
 
 
-"""Start of popup windows"""
+
 class EditableTextItem(QGraphicsPixmapItem):
-    def __init__(self, equation_type, difficulty, answer, *args):
-        super().__init__(*args)
+    def __init__(self, equation_type, difficulty, answer, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsSelectable)
         self.equation_type = equation_type  # Store the equation type
