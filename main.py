@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from io import BytesIO
 
 class EditableTextItem(QGraphicsPixmapItem):
-    def __init__(self, equation_type, difficulty, *args, **kwargs):
+    def __init__(self, equation_type, difficulty, answer, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsSelectable)
@@ -17,7 +17,7 @@ class EditableTextItem(QGraphicsPixmapItem):
         self.equation_type = equation_type  # Store the equation type
         self.difficulty = difficulty  # Store the difficulty level
         self.drag_offset = QPointF(0, 0)  # Store the offset of the mouse click
-        self.answer = ""  # Add 'answer' attribute here
+        self.answer = answer  # Add 'answer' attribute here
 
     def mouseDoubleClickEvent(self, event):
         try:
@@ -395,14 +395,17 @@ class MyGui(QMainWindow):
                 dialog.questionView.setScene(scene)
 
                 try:
-                    # Create a QGraphicsTextItem with plain text
-                    text_item = QGraphicsTextItem("This is some plain text")
+                    difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
+
+                    # Create a QGraphicsTextItem with the equation text
+                    equation_item = EditableTextItem(equation_text, difficulty, answer)
+                    equation_item.setPlainText(equation_text)
 
                     # Set the position of the text_item in the scene to the top left corner
-                    text_item.setPos(0, 0)
+                    equation_item.setPos(0, 0)
 
                     # Add the text_item to the scene
-                    scene.addItem(text_item)
+                    scene.addItem(equation_item)
                 except Exception as e:
                     print(f"An error occurred: {e}")
                 # Set validator for numofqueLine
@@ -462,9 +465,8 @@ class MyGui(QMainWindow):
                         difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
 
                         # Create a QGraphicsTextItem with the equation text
-                        equation_item = EditableTextItem(equation_text, difficulty)
+                        equation_item = EditableTextItem(equation_text, difficulty, answer)
                         equation_item.setPlainText(equation_text)
-                        equation_item.answer = answer
 
                         # Add the QGraphicsTextItem to the scene of the selected page
                         if self.selectedPage is not None:
