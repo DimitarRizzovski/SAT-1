@@ -1,90 +1,11 @@
 from PyQt6.QtWidgets import *
 from PyQt6.uic import loadUi
-from PyQt6.QtGui import QPainter, QPixmap, QIntValidator, QPageSize
+from PyQt6.QtGui import QPainter, QPageSize
 from PyQt6.QtPrintSupport import QPrinter
-from PyQt6.QtCore import Qt, QPointF
-import mgen
-import random
-from matplotlib import pyplot as plt
-from io import BytesIO
+from PyQt6.QtCore import Qt
+import qd
 
-class EditableTextItem(QGraphicsPixmapItem):
-    def __init__(self, equation_type, difficulty, answer, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsMovable)
-        self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsSelectable)
-        self.text = ""
-        self.equation_type = equation_type  # Store the equation type
-        self.difficulty = difficulty  # Store the difficulty level
-        self.drag_offset = QPointF(0, 0)  # Store the offset of the mouse click
-        self.answer = answer  # Add 'answer' attribute here
 
-    def mouseDoubleClickEvent(self, event):
-        try:
-            # Create a dialog for input
-            dialog = QDialog()
-            dialog.setWindowTitle(self.equation_type)  # Set the title to the equation type
-            layout = QVBoxLayout()
-
-            # Create labels for the question, answer, and difficulty
-            question_label = QLabel(f"Question: {self.text}")
-            answer_label = QLabel(f"Answer: {self.answer}")  # Assuming 'self.answer' contains the answer
-            difficulty_label = QLabel(
-                f"Difficulty: {self.difficulty}")  # Assuming 'self.difficulty' contains the difficulty level
-
-            layout.addWidget(question_label)
-            layout.addWidget(answer_label)
-            layout.addWidget(difficulty_label)
-
-            # Create OK button
-            ok_btn = QPushButton('OK')
-            ok_btn.clicked.connect(dialog.accept)
-            layout.addWidget(ok_btn)
-
-            # Set dialog layout
-            dialog.setLayout(layout)
-
-            # Show dialog and wait for user to press OK
-            dialog.exec()
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
-    def mousePressEvent(self, event):
-        try:
-            # Store the offset of the mouse click relative to the top-left corner of the box
-            self.drag_offset = event.pos() - self.boundingRect().topLeft()
-            super().mousePressEvent(event)
-        except Exception as e:
-            print(e)
-
-    def mouseMoveEvent(self, event):
-        if self.isSelected():
-            new_pos = event.scenePos() - self.drag_offset
-            self.setPos(new_pos)
-        else:
-            super().mouseMoveEvent(event)
-
-    def setPlainText(self, text):
-        self.text = text
-        fig = plt.figure(figsize=(6, 5))  # Adjust the figure size here
-
-        text_obj = plt.text(0, 0, f'${text}$', size=20, ha='center', va='center')  # Align text to the left
-        plt.axis('off')
-
-        renderer = fig.canvas.get_renderer()
-        bbox = text_obj.get_window_extent(renderer)
-
-        # Adjust the figure size to make the bounding box slightly bigger
-        fig.set_size_inches(bbox.width / renderer.dpi * 0.5, bbox.height / renderer.dpi * 0.5)
-
-        buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight')  # Remove padding around the figure
-        plt.close(fig)
-        buf.seek(0)
-
-        pixmap = QPixmap()
-        pixmap.loadFromData(buf.read())
-        self.setPixmap(pixmap)
 
 class SelectableGraphicsView(QGraphicsView):
     def __init__(self, scene, parent=None):
@@ -107,6 +28,7 @@ class SelectableGraphicsView(QGraphicsView):
         # Call the superclass implementation
         super().mouseDoubleClickEvent(event)
 
+
 class DraggableTextItem(QGraphicsTextItem):
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
@@ -123,6 +45,7 @@ class DraggableTextItem(QGraphicsTextItem):
     def mouseReleaseEvent(self, event):
         self.setCursor(Qt.CursorShape.OpenHandCursor)
         super().mouseReleaseEvent(event)
+
 
 class MyGui(QMainWindow):
     def __init__(self):
@@ -375,6 +298,8 @@ class MyGui(QMainWindow):
         except Exception as e:
             print(e)
 
+
+
     def add_equation(self, item):
         # Check all pages and set the selected page if it has the border style
         for view in self.findChildren(SelectableGraphicsView):
@@ -383,123 +308,11 @@ class MyGui(QMainWindow):
                 break
         equation_type = item.text()
         if equation_type == "  3A Expanding and collecting like terms":
-            try:
-                diff = "Easy"
-                # Load UI file
-                dialog = loadUi('questiondialog.ui')
-
-                # Create a QGraphicsScene
-                scene = QGraphicsScene()
-
-                # Set the scene for questionView
-                dialog.questionView.setScene(scene)
-
-                try:
-                    difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
-
-                    # Create a QGraphicsTextItem with the equation text
-                    equation_item = EditableTextItem(equation_text, difficulty, answer)
-                    equation_item.setPlainText(equation_text)
-
-                    # Set the position of the text_item in the scene to the top left corner
-                    equation_item.setPos(0, 0)
-
-                    # Add the text_item to the scene
-                    scene.addItem(equation_item)
-                except Exception as e:
-                    print(f"An error occurred: {e}")
-                # Set validator for numofqueLine
-                validator = QIntValidator(0, 99)  # Allow numbers from 0 to 99
-                dialog.numofqueLine.setValidator(validator)
-
-                # Disable the buttons initially
-                dialog.okButton.setEnabled(False)
-                dialog.addButton.setEnabled(False)
-
-                # Enable the buttons when numofqueLine is not empty
-                def enable_buttons():
-                    if dialog.numofqueLine.text():
-                        dialog.okButton.setEnabled(True)
-                        dialog.addButton.setEnabled(True)
-                    else:
-                        dialog.okButton.setEnabled(False)
-                        dialog.addButton.setEnabled(False)
-
-                # Connect the textChanged signal to the enable_buttons slot
-                dialog.numofqueLine.textChanged.connect(enable_buttons)
-
-                # Create a button group
-                button_group = QButtonGroup()
-
-                # Add the buttons to the group
-                button_group.addButton(dialog.easyButton)
-                button_group.addButton(dialog.mediumButton)
-                button_group.addButton(dialog.hardButton)
-
-                def difficultybuttons(d):
-                    nonlocal diff  # This allows us to modify the 'diff' variable in the outer scope
-                    diff = d
-
-                dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
-                dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))
-                dialog.hardButton.clicked.connect(lambda: difficultybuttons("Hard"))
-
-                # Set easyButton as the default checked button
-                dialog.easyButton.setChecked(True)
-
-                # Ensure that one of the buttons is always checked
-                button_group.setExclusive(True)
-
-                # Define a function to process the equation and close the dialog
-                def process_equation_and_close():
-                    add_equation()
-                    dialog.close()
-
-                # Define a function to add the equation without closing the dialog
-                def add_equation():
-                    # Get the number of equations to generate from numofqueLine
-                    num_of_equations = int(dialog.numofqueLine.text())
-
-
-                    for _ in range(num_of_equations):
-                        difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
-
-                        # Create a QGraphicsTextItem with the equation text
-                        equation_item = EditableTextItem(equation_text, difficulty, answer)
-                        equation_item.setPlainText(equation_text)
-
-                        # Add the QGraphicsTextItem to the scene of the selected page
-                        if self.selectedPage is not None:
-                            self.selectedPage.scene().addItem(equation_item)
-
-                            # Generate random coordinates within the bounds of the scene
-                            x = random.uniform(0,
-                                               self.selectedPage.scene().width() - equation_item.boundingRect().width())
-                            y = random.uniform(0,
-                                               self.selectedPage.scene().height() - equation_item.boundingRect().height())
-
-                            # Set the position of the equation_item in the scene
-                            equation_item.setPos(x, y)
-
-                    # Reset easyButton to checked
-                    dialog.easyButton.setChecked(True)
-
-                # Connect the clicked signal of the okButton to the slot
-                dialog.okButton.clicked.connect(process_equation_and_close)
-
-                # Connect the clicked signal of the addButton to the slot
-                dialog.addButton.clicked.connect(add_equation)
-
-                # Show dialog and wait for user to press OK
-                dialog.exec()
-            except Exception as e:
-                print(f"An error occurred: {e}")
-
-
+            qd.linear_equation_popup(self)
         elif equation_type == "  3B Factorising":
-            print("Not Done")
+            qd.factorise_equation_popup(self)
         elif equation_type == "  3C Quadratic Equations":
-            print("Not Done")
+            qd.quadratic(self)
         elif equation_type == "  3D Graphing Quadratics":
             print("Not Done")
         elif equation_type == "  3F Completing The Square And Turning Points":
@@ -518,6 +331,8 @@ class MyGui(QMainWindow):
             print("Not Done")
         else:
             print("Not Valid")
+
+
 def main():
     app = QApplication([])
     window = MyGui()
