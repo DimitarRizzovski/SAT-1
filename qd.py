@@ -1,9 +1,7 @@
 from PyQt6.QtWidgets import *
 from PyQt6.uic import loadUi
-from PyQt6.QtGui import QPainter, QPixmap, QIntValidator, QPageSize
-from PyQt6.QtPrintSupport import QPrinter
-from PyQt6.QtCore import Qt, QPointF
-from PyQt6.uic.properties import QtCore
+from PyQt6.QtGui import QPixmap, QIntValidator
+from PyQt6.QtCore import QPointF
 
 import mgen
 import random
@@ -161,6 +159,13 @@ def linear_equation_popup(self):
         def difficultybuttons(d):
             nonlocal diff
             diff = d
+            scene.clear()
+            for i in range(4):
+                difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
+                equation_item = ExampleTextItem(equation_text, difficulty, answer)
+                equation_item.setPlainText(equation_text)
+                equation_item.setPos(0, 20 + i * 100)
+                scene.addItem(equation_item)
 
         dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
         dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))
@@ -229,6 +234,13 @@ def factorise_equation_popup(self):
         def difficultybuttons(d):
             nonlocal diff
             diff = d
+            scene.clear()
+            for i in range(4):
+                difficulty, equation_text, answer = mgen.generate_factorise_equation(diff)
+                equation_item = ExampleTextItem(equation_text, difficulty, answer)
+                equation_item.setPlainText(equation_text)
+                equation_item.setPos(0, 20 + i * 100)
+                scene.addItem(equation_item)
 
         dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
         dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))
@@ -297,6 +309,13 @@ def quadratic(self):
         def difficultybuttons(d):
             nonlocal diff
             diff = d
+            scene.clear()
+            for i in range(4):
+                difficulty, equation_text, answer = mgen.construct_quadratic(diff)
+                equation_item = ExampleTextItem(equation_text, difficulty, answer)
+                equation_item.setPlainText(equation_text)
+                equation_item.setPos(0, 20 + i * 100)
+                scene.addItem(equation_item)
 
         dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
         dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))

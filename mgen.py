@@ -1,7 +1,6 @@
 import random
-
 import Crand
-from sympy import symbols, solve, simplify, factor, expand
+from sympy import factor, expand
 import sympy as sp
 
 
