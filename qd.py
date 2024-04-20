@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import *
 from PyQt6.uic import loadUi
 from PyQt6.QtGui import QPixmap, QIntValidator
 from PyQt6.QtCore import QPointF
-
 import mgen
 import random
 from matplotlib import pyplot as plt
@@ -285,7 +284,7 @@ def quadratic(self):
             difficulty, equation_text, answer = mgen.construct_quadratic(diff)
             equation_item = ExampleTextItem(equation_text, difficulty, answer)
             equation_item.setPlainText(equation_text)
-            equation_item.setPos(0, 20 + i * 100)  # Changed from 10 to 50
+            equation_item.setPos(0, 20 + i * 100)
             scene.addItem(equation_item)
         validator = QIntValidator(0, 99)
         dialog.numofqueLine.setValidator(validator)

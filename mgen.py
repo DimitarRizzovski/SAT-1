@@ -51,6 +51,7 @@ def generate_linear_equation(difficulty):
 
     return difficulty, answer, expanded_equation
 
+
 def generate_factorise_equation(difficulty):
     def generate_equation(lower, upper):
         x = sp.symbols('x')
@@ -58,9 +59,10 @@ def generate_factorise_equation(difficulty):
         original_equation = (x + num1) * (x + num2)
         expanded_equation = expand(original_equation)
         factorized_equation = factor(expanded_equation)
-        expanded_equation = str(expanded_equation).replace("**","^").replace("*", "")
-        factorized_equation = str(factorized_equation).replace("**","^").replace("*", "")
+        expanded_equation = str(expanded_equation).replace("**", "^").replace("*", "")
+        factorized_equation = str(factorized_equation).replace("**", "^").replace("*", "")
         return expanded_equation, factorized_equation  # Flip the order here
+
     def generate_equation_hard():
         x = sp.symbols('x')
         original_equation = f"({Crand.non_zero_randint(-5, 5)}*x {random.choice(['+', '-'])} {random.randint(1, 5)})*({Crand.non_zero_randint(-5, 5)}*x {random.choice(['+', '-'])} {random.randint(1, 5)})"
@@ -88,6 +90,7 @@ def construct_quadratic(difficulty):
         x1, x2 = Crand.non_zero_randint(lower, upper), Crand.non_zero_randint(lower, upper)
         answer = (x - x1) * (x - x2)
         return answer, (x1, x2)
+
     def generate_equation_medium_hard(lower, upper):
         x = sp.symbols('x')
         x1, x2 = Crand.non_zero_one_randint(lower, upper), Crand.non_zero_one_randint(lower, upper)
