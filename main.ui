@@ -71,8 +71,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>1839</width>
-                <height>950</height>
+                <width>81</width>
+                <height>28</height>
                </rect>
               </property>
              </widget>
@@ -100,19 +100,6 @@
               <enum>QFrame::Raised</enum>
              </property>
              <layout class="QGridLayout" name="gridLayout_2">
-              <item row="1" column="0">
-               <widget class="QLineEdit" name="searchMathEquations">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="placeholderText">
-                 <string>Search</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0">
-               <widget class="QListWidget" name="mathQuestionsList"/>
-              </item>
               <item row="4" column="0">
                <widget class="QGroupBox" name="groupBox">
                 <property name="minimumSize">
@@ -125,9 +112,6 @@
                  <string>Info</string>
                 </property>
                </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QListWidget" name="mathQuestions"/>
               </item>
               <item row="0" column="0">
                <widget class="QFrame" name="TopBar">
@@ -185,6 +169,88 @@
                 </layout>
                </widget>
               </item>
+              <item row="5" column="0">
+               <widget class="QListWidget" name="mathQuestionsList"/>
+              </item>
+              <item row="3" column="0">
+               <widget class="QListWidget" name="mathQuestions">
+                <item>
+                 <property name="text">
+                  <string>Chapter 3: Quadratics</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3A Expanding and collecting like terms</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3B Factorising</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3C Quadratic Equations</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3D Graphing Quadratics</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3E Completing the square and turning points</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3F Completing The Square And Turning Points</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3G Solving Quadratic Inequalities</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3H The General Quadratic Formula</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3I The Discriminant</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3J Solving Simultaneous Linear and Quadratic Equations</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3K Families of Quadratic Polynomial Functions</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>  3L Quadratic Models</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLineEdit" name="searchMathEquations">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="placeholderText">
+                 <string>Search</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </widget>
            </item>
@@ -237,8 +303,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>1856</width>
-                <height>950</height>
+                <width>98</width>
+                <height>28</height>
                </rect>
               </property>
              </widget>

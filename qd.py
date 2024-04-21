@@ -61,7 +61,14 @@ class EditableTextItem(QGraphicsPixmapItem):
     def mouseMoveEvent(self, event):
         if self.isSelected():
             new_pos = event.scenePos() - self.drag_offset
-            self.setPos(new_pos)
+
+            # Snap to 10px grid
+            grid_size = 10
+            new_x = round(new_pos.x() / grid_size) * grid_size
+            new_y = round(new_pos.y() / grid_size) * grid_size
+            snapped_pos = QPointF(new_x, new_y)
+
+            self.setPos(snapped_pos)
         else:
             super().mouseMoveEvent(event)
 
@@ -141,8 +148,6 @@ def create_question_dialog(self, equation_type, generate_equation_func):
                 equation_item.setPos(0, 20 + i * 100)
                 scene.addItem(equation_item)
 
-
-
         def set_difficulty(new_diff):
             nonlocal diff
             diff = new_diff
@@ -171,15 +176,24 @@ def create_question_dialog(self, equation_type, generate_equation_func):
 
         def add_equations():
             num_of_equations = int(dialog.numofqueLine.text())
+
+            # Keep track of the y-position for stacking
+            y_pos = 0
+
             for _ in range(num_of_equations):
                 difficulty, equation_text, answer = generate_equation_func(diff)
                 equation_item = EditableTextItem(equation_text, difficulty, answer)
                 equation_item.setPlainText(equation_text)
                 if self.selectedPage is not None:
                     self.selectedPage.scene().addItem(equation_item)
-                    x = random.uniform(0, self.selectedPage.scene().width() - equation_item.boundingRect().width())
-                    y = random.uniform(0, self.selectedPage.scene().height() - equation_item.boundingRect().height())
+
+                    # Position below the previous item
+                    x = 0  # Align to the left
+                    y = y_pos
                     equation_item.setPos(x, y)
+
+                    # Update y_pos for the next item
+                    y_pos += equation_item.boundingRect().height() + 10  # Add some spacing
 
         dialog.okButton.clicked.connect(lambda: add_equations() and dialog.close())
         dialog.addButton.clicked.connect(add_equations)

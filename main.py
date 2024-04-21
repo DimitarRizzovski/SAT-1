@@ -41,9 +41,6 @@ class MyGui(QMainWindow):
         self.add_answer_page()
         self.scrollAreaWidgetContents.layout().itemAt(0).widget().isSelected = True
         self.scrollAreaWidgetContents.layout().itemAt(0).widget().setStyleSheet("border: 2px solid blue")
-        self.equations = [r"Chapter 3: Quadratics", "  3A Expanding and collecting like terms", "  3B Factorising", "  3C Quadratic Equations", "  3D Graphing Quadratics", "  3F Completing The Square And Turning Points", "  3G Solving Quadratic Inequalities", "  3H The General Quadratic Formula", "  3I The Discriminant", "  3J Solving Simultaneous Linear and Quadratic Equations", "  3K Families of Quadratic Polynomial Functions", "  3L Quadratic Models"]
-        for equation in self.equations:
-            QListWidgetItem(equation, self.mathQuestions)
         self.showMaximized()
         self.show()
 
@@ -56,68 +53,47 @@ class MyGui(QMainWindow):
             else:
                 item.setHidden(True)
 
-    def title_page(self, scrollAreaTitlePageWidgetContents):
-        self.scene_intro = QGraphicsScene()
-        view = SelectableGraphicsView(self.scene_intro, 0, self)
-        view.setFixedSize(794, 1150)
-        self.scene_intro.setSceneRect(0, 0, 794, 1123)
-        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        if scrollAreaTitlePageWidgetContents.layout() is None:
-            scrollAreaTitlePageWidgetContents.setLayout(QVBoxLayout())
-            scrollAreaTitlePageWidgetContents.layout().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        scrollAreaTitlePageWidgetContents.layout().addWidget(view)
-        view.setObjectName(f"Title Page")
+    def create_page(self, scene, scroll_area_widget_contents, page_count, page_type):
 
-    def add_question_page(self):
-        self.questionPageCount += 1
-        scene = QGraphicsScene()
-        view = SelectableGraphicsView(scene, self.questionPageCount, self)
+        view = SelectableGraphicsView(scene, page_count, self)
         view.setFixedSize(794, 1150)
         scene.setSceneRect(0, 0, 794, 1123)
         view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        if self.scrollAreaWidgetContents.layout() is None:
-            self.scrollAreaWidgetContents.setLayout(QVBoxLayout())
-            self.scrollAreaWidgetContents.layout().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.scrollAreaWidgetContents.layout().addWidget(view)
 
-        # Make page number non-interactive
-        pageNumberLabel = QGraphicsTextItem(f"Page {self.questionPageCount}")
-        scene.addItem(pageNumberLabel)
+        if scroll_area_widget_contents.layout() is None:
+            scroll_area_widget_contents.setLayout(QVBoxLayout())
+            scroll_area_widget_contents.layout().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        scroll_area_widget_contents.layout().addWidget(view)
 
-        # Position page number at the bottom center
-        x = (scene.width() - pageNumberLabel.boundingRect().width()) / 2
-        y = scene.height() - pageNumberLabel.boundingRect().height()
-        pageNumberLabel.setPos(x, y)
-        view.setObjectName(f"Page {self.questionPageCount}")
-        view.setStyleSheet("border: 2px solid black")
+        # Add page number label
+        if page_type != "Title":
+            page_number_label = QGraphicsTextItem(f"Page {page_count}")
+            scene.addItem(page_number_label)
+            x = (scene.width() - page_number_label.boundingRect().width()) / 2
+            y = scene.height() - page_number_label.boundingRect().height()
+            page_number_label.setPos(x, y)
+
+        view.setObjectName(f"{page_type} Page {page_count}")
+        if page_type == "Question":
+            view.setStyleSheet("border: 2px solid black")  # Add border for question pages
+
+        return view
+
+    def title_page(self, scrollAreaTitlePageWidgetContents):
+        scene_intro = QGraphicsScene()
+        self.create_page(scene_intro, scrollAreaTitlePageWidgetContents, 0, "Title")
+
+    def add_question_page(self):
+        self.questionPageCount += 1
+        scene = QGraphicsScene()
+        self.create_page(scene, self.scrollAreaWidgetContents, self.questionPageCount, "Question")
 
     def add_answer_page(self):
-        self.scene_answers = QGraphicsScene()
-        view = SelectableGraphicsView(self.scene_answers, 1, self)
-        view.setFixedSize(794, 1150)
-        self.scene_answers.setSceneRect(0, 0, 794, 1123)
-        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        if self.scrollAreaAnswersWidgetContents.layout() is None:
-            self.scrollAreaAnswersWidgetContents.setLayout(QVBoxLayout())
-            self.scrollAreaAnswersWidgetContents.layout().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.scrollAreaAnswersWidgetContents.layout().addWidget(view)
         self.answerPageCount += 1
-        view.setObjectName(f"Answer Page {self.answerPageCount}")
-
-        # Make page number non-interactive
-        pageNumberLabel = QGraphicsTextItem(f"Answer Page {self.answerPageCount}")
-        self.scene_answers.addItem(pageNumberLabel)
-
-        # Position page number at the bottom center
-        x = (self.scene_answers.width() - pageNumberLabel.boundingRect().width()) / 2
-        y = self.scene_answers.height() - pageNumberLabel.boundingRect().height()
-        pageNumberLabel.setPos(x, y)
+        self.scene_answers = QGraphicsScene()
+        self.create_page(self.scene_answers, self.scrollAreaAnswersWidgetContents, self.answerPageCount, "Answer")
 
     def delete_page(self):
         try:
@@ -197,6 +173,8 @@ class MyGui(QMainWindow):
         elif equation_type == "  3C Quadratic Equations":
             qd.quadratic(self)
         elif equation_type == "  3D Graphing Quadratics":
+            print("Not Done")
+        elif equation_type == "  3E Graphing Quadratics":
             print("Not Done")
         elif equation_type == "  3F Completing The Square And Turning Points":
             print("Not Done")
