@@ -121,25 +121,43 @@ class ExampleTextItem(QGraphicsPixmapItem):
         pixmap.loadFromData(buf.read())
         self.setPixmap(pixmap)
 
-
-def linear_equation_popup(self):
+def create_question_dialog(self, equation_type, generate_equation_func):
     try:
-        diff = "Easy"
+        diff = "Easy"  # Initial difficulty, but will be updated
         dialog = loadUi('questiondialog.ui')
         dialog.setFixedSize(dialog.size())
+        dialog.setWindowTitle(equation_type)
         dialog.cancelButton.clicked.connect(dialog.close)
         scene = QGraphicsScene()
         dialog.questionView.setScene(scene)
-        for i in range(4):
-            difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
-            equation_item = ExampleTextItem(equation_text, difficulty, answer)
-            equation_item.setPlainText(equation_text)
-            equation_item.setPos(0, 20 + i * 100)  # Changed from 10 to 50
-            scene.addItem(equation_item)
+
+        def update_example_equations():
+            nonlocal diff  # Access and modify the 'diff' variable
+            scene.clear()
+            for i in range(4):
+                difficulty, equation_text, answer = generate_equation_func(diff)
+                equation_item = ExampleTextItem(equation_text, difficulty, answer)
+                equation_item.setPlainText(equation_text)
+                equation_item.setPos(0, 20 + i * 100)
+                scene.addItem(equation_item)
+
+
+
+        def set_difficulty(new_diff):
+            nonlocal diff
+            diff = new_diff
+            update_example_equations()
+
+        dialog.easyButton.clicked.connect(lambda: set_difficulty("Easy"))
+        dialog.mediumButton.clicked.connect(lambda: set_difficulty("Medium"))
+        dialog.hardButton.clicked.connect(lambda: set_difficulty("Hard"))
+        dialog.easyButton.setChecked(True)
+
+        update_example_equations()
+
+        # Number of Questions Input
         validator = QIntValidator(0, 99)
         dialog.numofqueLine.setValidator(validator)
-        dialog.okButton.setEnabled(False)
-        dialog.addButton.setEnabled(False)
 
         def enable_buttons():
             if dialog.numofqueLine.text():
@@ -150,199 +168,31 @@ def linear_equation_popup(self):
                 dialog.addButton.setEnabled(False)
 
         dialog.numofqueLine.textChanged.connect(enable_buttons)
-        button_group = QButtonGroup()
-        button_group.addButton(dialog.easyButton)
-        button_group.addButton(dialog.mediumButton)
-        button_group.addButton(dialog.hardButton)
 
-        def difficultybuttons(d):
-            nonlocal diff
-            diff = d
-            scene.clear()
-            for i in range(4):
-                difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
-                equation_item = ExampleTextItem(equation_text, difficulty, answer)
-                equation_item.setPlainText(equation_text)
-                equation_item.setPos(0, 20 + i * 100)
-                scene.addItem(equation_item)
-
-        dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
-        dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))
-        dialog.hardButton.clicked.connect(lambda: difficultybuttons("Hard"))
-        dialog.easyButton.setChecked(True)
-        button_group.setExclusive(True)
-
-        def process_equation_and_close():
-            add_equation()
-            dialog.close()
-
-        def add_equation():
+        def add_equations():
             num_of_equations = int(dialog.numofqueLine.text())
             for _ in range(num_of_equations):
-                difficulty, equation_text, answer = mgen.generate_linear_equation(diff)
+                difficulty, equation_text, answer = generate_equation_func(diff)
                 equation_item = EditableTextItem(equation_text, difficulty, answer)
                 equation_item.setPlainText(equation_text)
                 if self.selectedPage is not None:
                     self.selectedPage.scene().addItem(equation_item)
-                    x = random.uniform(0,
-                                       self.selectedPage.scene().width() - equation_item.boundingRect().width())
-                    y = random.uniform(0,
-                                       self.selectedPage.scene().height() - equation_item.boundingRect().height())
+                    x = random.uniform(0, self.selectedPage.scene().width() - equation_item.boundingRect().width())
+                    y = random.uniform(0, self.selectedPage.scene().height() - equation_item.boundingRect().height())
                     equation_item.setPos(x, y)
-            dialog.easyButton.setChecked(True)
 
-        dialog.okButton.clicked.connect(process_equation_and_close)
-        dialog.addButton.clicked.connect(add_equation)
+        dialog.okButton.clicked.connect(lambda: add_equations() and dialog.close())
+        dialog.addButton.clicked.connect(add_equations)
         dialog.exec()
     except Exception as e:
         print(f"An error occurred: {e}")
+
+# Example usage
+def linear_equation_popup(self):
+    create_question_dialog(self, "Linear Equation", mgen.generate_linear_equation)
 
 def factorise_equation_popup(self):
-    try:
-        diff = "Easy"
-        dialog = loadUi('questiondialog.ui')
-        dialog.setFixedSize(dialog.size())
-        dialog.setFixedSize(dialog.size())
-        scene = QGraphicsScene()
-        dialog.questionView.setScene(scene)
-        for i in range(4):
-            difficulty, equation_text, answer = mgen.generate_factorise_equation(diff)
-            equation_item = ExampleTextItem(equation_text, difficulty, answer)
-            equation_item.setPlainText(equation_text)
-            equation_item.setPos(0, 20 + i * 100)  # Changed from 10 to 50
-            scene.addItem(equation_item)
-        validator = QIntValidator(0, 99)
-        dialog.numofqueLine.setValidator(validator)
-        dialog.okButton.setEnabled(False)
-        dialog.addButton.setEnabled(False)
-
-        def enable_buttons():
-            if dialog.numofqueLine.text():
-                dialog.okButton.setEnabled(True)
-                dialog.addButton.setEnabled(True)
-            else:
-                dialog.okButton.setEnabled(False)
-                dialog.addButton.setEnabled(False)
-
-        dialog.numofqueLine.textChanged.connect(enable_buttons)
-        button_group = QButtonGroup()
-        button_group.addButton(dialog.easyButton)
-        button_group.addButton(dialog.mediumButton)
-        button_group.addButton(dialog.hardButton)
-
-        def difficultybuttons(d):
-            nonlocal diff
-            diff = d
-            scene.clear()
-            for i in range(4):
-                difficulty, equation_text, answer = mgen.generate_factorise_equation(diff)
-                equation_item = ExampleTextItem(equation_text, difficulty, answer)
-                equation_item.setPlainText(equation_text)
-                equation_item.setPos(0, 20 + i * 100)
-                scene.addItem(equation_item)
-
-        dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
-        dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))
-        dialog.hardButton.clicked.connect(lambda: difficultybuttons("Hard"))
-        dialog.easyButton.setChecked(True)
-        button_group.setExclusive(True)
-
-        def process_equation_and_close():
-            add_equation()
-            dialog.close()
-
-        def add_equation():
-            num_of_equations = int(dialog.numofqueLine.text())
-            for _ in range(num_of_equations):
-                difficulty, equation_text, answer = mgen.generate_factorise_equation(diff)
-                equation_item = EditableTextItem(equation_text, difficulty, answer)
-                equation_item.setPlainText(equation_text)
-                if self.selectedPage is not None:
-                    self.selectedPage.scene().addItem(equation_item)
-                    x = random.uniform(0,
-                                       self.selectedPage.scene().width() - equation_item.boundingRect().width())
-                    y = random.uniform(0,
-                                       self.selectedPage.scene().height() - equation_item.boundingRect().height())
-                    equation_item.setPos(x, y)
-            dialog.easyButton.setChecked(True)
-
-        dialog.okButton.clicked.connect(process_equation_and_close)
-        dialog.addButton.clicked.connect(add_equation)
-        dialog.exec()
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    create_question_dialog(self, "Factorise Equation", mgen.generate_factorise_equation)
 
 def quadratic(self):
-    try:
-        diff = "Easy"
-        dialog = loadUi('questiondialog.ui')
-        dialog.setFixedSize(dialog.size())
-        dialog.setFixedSize(dialog.size())
-        scene = QGraphicsScene()
-        dialog.questionView.setScene(scene)
-        for i in range(4):
-            difficulty, equation_text, answer = mgen.construct_quadratic(diff)
-            equation_item = ExampleTextItem(equation_text, difficulty, answer)
-            equation_item.setPlainText(equation_text)
-            equation_item.setPos(0, 20 + i * 100)
-            scene.addItem(equation_item)
-        validator = QIntValidator(0, 99)
-        dialog.numofqueLine.setValidator(validator)
-        dialog.okButton.setEnabled(False)
-        dialog.addButton.setEnabled(False)
-
-        def enable_buttons():
-            if dialog.numofqueLine.text():
-                dialog.okButton.setEnabled(True)
-                dialog.addButton.setEnabled(True)
-            else:
-                dialog.okButton.setEnabled(False)
-                dialog.addButton.setEnabled(False)
-
-        dialog.numofqueLine.textChanged.connect(enable_buttons)
-        button_group = QButtonGroup()
-        button_group.addButton(dialog.easyButton)
-        button_group.addButton(dialog.mediumButton)
-        button_group.addButton(dialog.hardButton)
-
-        def difficultybuttons(d):
-            nonlocal diff
-            diff = d
-            scene.clear()
-            for i in range(4):
-                difficulty, equation_text, answer = mgen.construct_quadratic(diff)
-                equation_item = ExampleTextItem(equation_text, difficulty, answer)
-                equation_item.setPlainText(equation_text)
-                equation_item.setPos(0, 20 + i * 100)
-                scene.addItem(equation_item)
-
-        dialog.easyButton.clicked.connect(lambda: difficultybuttons("Easy"))
-        dialog.mediumButton.clicked.connect(lambda: difficultybuttons("Medium"))
-        dialog.hardButton.clicked.connect(lambda: difficultybuttons("Hard"))
-        dialog.easyButton.setChecked(True)
-        button_group.setExclusive(True)
-
-        def process_equation_and_close():
-            add_equation()
-            dialog.close()
-
-        def add_equation():
-            num_of_equations = int(dialog.numofqueLine.text())
-            for _ in range(num_of_equations):
-                difficulty, equation_text, answer = mgen.construct_quadratic(diff)
-                equation_item = EditableTextItem(equation_text, difficulty, answer)
-                equation_item.setPlainText(equation_text)
-                if self.selectedPage is not None:
-                    self.selectedPage.scene().addItem(equation_item)
-                    x = random.uniform(0,
-                                       self.selectedPage.scene().width() - equation_item.boundingRect().width())
-                    y = random.uniform(0,
-                                       self.selectedPage.scene().height() - equation_item.boundingRect().height())
-                    equation_item.setPos(x, y)
-            dialog.easyButton.setChecked(True)
-
-        dialog.okButton.clicked.connect(process_equation_and_close)
-        dialog.addButton.clicked.connect(add_equation)
-        dialog.exec()
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    create_question_dialog(self, "Quadratic Equation", mgen.construct_quadratic)

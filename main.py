@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import *
 from PyQt6.uic import loadUi
-from PyQt6.QtGui import QPainter, QPageSize, QTransform
+from PyQt6.QtGui import QPainter, QPageSize
 from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtCore import Qt
 import qd
@@ -16,16 +16,11 @@ class SelectableGraphicsView(QGraphicsView):
     def mouseDoubleClickEvent(self, event):
         for view in self.parent().findChildren(SelectableGraphicsView):
             view.isSelected = False
-            view.setStyleSheet("")
+            view.setStyleSheet("border: 2px solid black")
         self.isSelected = True
         self.setStyleSheet("border: 2px solid blue")
         self.parent().selectedPage = self
         super().mouseDoubleClickEvent(event)
-
-class DraggableTextItem(QGraphicsTextItem):
-    def __init__(self, text, parent=None):
-        super().__init__(text, parent)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
 class MyGui(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -91,8 +86,6 @@ class MyGui(QMainWindow):
 
         # Make page number non-interactive
         pageNumberLabel = QGraphicsTextItem(f"Page {self.questionPageCount}")
-        pageNumberLabel.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
-        pageNumberLabel.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
         scene.addItem(pageNumberLabel)
 
         # Position page number at the bottom center
@@ -100,6 +93,7 @@ class MyGui(QMainWindow):
         y = scene.height() - pageNumberLabel.boundingRect().height()
         pageNumberLabel.setPos(x, y)
         view.setObjectName(f"Page {self.questionPageCount}")
+        view.setStyleSheet("border: 2px solid black")
 
     def add_answer_page(self):
         self.scene_answers = QGraphicsScene()
@@ -118,8 +112,6 @@ class MyGui(QMainWindow):
 
         # Make page number non-interactive
         pageNumberLabel = QGraphicsTextItem(f"Answer Page {self.answerPageCount}")
-        pageNumberLabel.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
-        pageNumberLabel.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
         self.scene_answers.addItem(pageNumberLabel)
 
         # Position page number at the bottom center
@@ -158,7 +150,7 @@ class MyGui(QMainWindow):
         try:
             for view in self.findChildren(SelectableGraphicsView):
                 view.isSelected = False
-                view.setStyleSheet("")
+                view.setStyleSheet("border: 2px solid black")
             self.selectedPage = None
             if index == 0:
                 selectedPage = self.scrollAreaTitlePageWidgetContents.layout().itemAt(0).widget()
