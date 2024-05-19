@@ -1,7 +1,11 @@
-import random
+import numpy
 import Crand
 from sympy import factor, expand
 import sympy as sp
+from PyQt6.QtGui import QPixmap, QImage
+import random
+from matplotlib import pyplot as plt
+from io import BytesIO
 
 
 # For Quadratics Expansion
@@ -110,3 +114,56 @@ def construct_quadratic(difficulty):
     equation_text = str(equation_text).replace("**", "^").replace("*", "")
 
     return difficulty, equation_text, answer
+
+def generate_graphing_quadratic(difficulty):
+    def generate_equation(lower, upper):
+        x = sp.symbols('x')
+        x1, x2 = Crand.non_zero_one_randint(lower, upper), Crand.non_zero_one_randint(lower, upper)
+        equation = (x - x1) * (x - x2)
+        return equation, (x1, x2)  # Return the equation and intercepts
+
+    def generate_equation_medium_hard(lower, upper):
+        x = sp.symbols('x')
+        x1, x2 = Crand.non_zero_one_randint(lower, upper), Crand.non_zero_one_randint(lower, upper)
+        equation = (x - x1) * (x - x2)
+        return equation, (x1, x2)  # Return the equation and intercepts
+
+    if difficulty == "Easy":
+        equation, intercepts = generate_equation(1, 5)
+    elif difficulty == "Medium":
+        equation, intercepts = generate_equation_medium_hard(-5, 5)
+    elif difficulty == "Hard":
+        equation, intercepts = generate_equation_medium_hard(-10, 10)
+    else:
+        equation, intercepts = "Unknown difficulty", None
+
+    # Generate the question (expanded form of the equation)
+    equation_text = sp.expand(equation)
+    equation_text = str(equation_text).replace("**", "^").replace("*", "")
+
+    # Generate graph image (this is the answer)
+    x = numpy.linspace(-15, 15, 400)
+    y = sp.lambdify(sp.symbols('x'), equation, 'numpy')(x)
+
+    fig, ax = plt.subplots(figsize=(6, 5), facecolor='none')
+    ax.plot(x, y, color='black')
+    ax.axhline(y=0, color='black', linewidth=0.5)  # x-axis
+    ax.axvline(x=0, color='black', linewidth=0.5)  # y-axis
+
+    # Mark intercepts
+    ax.plot(0, sp.lambdify(sp.symbols('x'), equation, 'numpy')(0), 'ro',
+            markersize=8)  # Y-intercept
+    ax.plot(intercepts[0], 0, 'bo', markersize=8)  # X-intercept 1
+    ax.plot(intercepts[1], 0, 'bo', markersize=8)  # X-intercept 2
+
+    plt.axis('off')
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', transparent=True)
+    plt.close(fig)
+    buf.seek(0)
+
+    image = QImage()
+    image.loadFromData(buf.read())
+    pixmap_answer = QPixmap.fromImage(image)  # The graph is the answer
+
+    return difficulty, equation_text, pixmap_answer  # Return pixmap as answer

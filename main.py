@@ -5,6 +5,7 @@ from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtCore import Qt
 import qd
 
+
 class SelectableGraphicsView(QGraphicsView):
     def __init__(self, scene, page_number, parent=None):
         super().__init__(scene, parent)
@@ -21,6 +22,8 @@ class SelectableGraphicsView(QGraphicsView):
         self.setStyleSheet("border: 2px solid blue")
         self.parent().selectedPage = self
         super().mouseDoubleClickEvent(event)
+
+
 class MyGui(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -91,9 +94,10 @@ class MyGui(QMainWindow):
         self.create_page(scene, self.scrollAreaWidgetContents, self.questionPageCount, "Question")
 
     def add_answer_page(self):
+        scene_intro = QGraphicsScene()
         self.answerPageCount += 1
         self.scene_answers = QGraphicsScene()
-        self.create_page(self.scene_answers, self.scrollAreaAnswersWidgetContents, self.answerPageCount, "Answer")
+        self.create_page(scene_intro, self.scrollAreaAnswersWidgetContents, 2, "Answer")
 
     def delete_page(self):
         try:
@@ -142,23 +146,33 @@ class MyGui(QMainWindow):
 
     def save_pdf(self):
         try:
-            printer = QPrinter()
+            printer = QPrinter(QPrinter.PrinterMode.PrinterResolution)
             printer.setResolution(96)
             printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
             printer.setOutputFileName("output.pdf")
-            painter = QPainter(printer)
-            self.scene_intro.render(painter)
+
+            painter = QPainter()
+            painter.begin(printer)
+
+            # Render the title page
+            self.scrollAreaTitlePageWidgetContents.layout().itemAt(0).widget().scene().render(painter)
+
+            # Render question pages
             for i in range(self.questionPageCount):
-                printer.newPage()
                 questionPage = self.scrollAreaWidgetContents.layout().itemAt(i).widget()
+                printer.newPage()  # Start a new page before rendering each question page
                 questionPage.scene().render(painter)
+
+            # Render answer pages
             for i in range(self.answerPageCount):
-                printer.newPage()
                 answerPage = self.scrollAreaAnswersWidgetContents.layout().itemAt(i).widget()
+                printer.newPage()  # Start a new page before rendering each answer page
                 answerPage.scene().render(painter)
+
             painter.end()
+
         except Exception as e:
-            print(e)
+            print(f"An error occurred while saving the PDF: {e}")
 
     def add_equation(self, item):
         for view in self.findChildren(SelectableGraphicsView):
@@ -173,7 +187,7 @@ class MyGui(QMainWindow):
         elif equation_type == "  3C Quadratic Equations":
             qd.quadratic(self)
         elif equation_type == "  3D Graphing Quadratics":
-            print("Not Done")
+            qd.graph_quadratic(self)
         elif equation_type == "  3E Graphing Quadratics":
             print("Not Done")
         elif equation_type == "  3F Completing The Square And Turning Points":
@@ -193,10 +207,12 @@ class MyGui(QMainWindow):
         else:
             print("Not Valid")
 
+
 def main():
     app = QApplication([])
     window = MyGui()
     app.exec()
+
 
 if __name__ == '__main__':
     main()

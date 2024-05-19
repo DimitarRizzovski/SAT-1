@@ -15,10 +15,3 @@ def non_zero_randint(a, b):
     while result == 0:
         result = random.randint(a, b)
     return result
-
-
-def rand_op(*args):
-    """Choose a random operator from the provided arguments."""
-    if len(args) == 0:
-        raise ValueError("At least one argument is required")
-    return random.choice(args)
