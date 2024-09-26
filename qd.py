@@ -1,13 +1,12 @@
-from PyQt6.QtWidgets import *
+from PyQt6.QtWidgets import QGraphicsPixmapItem, QDialog, QVBoxLayout, QLabel, QPushButton, QGraphicsScene
 from PyQt6.uic import loadUi
 from PyQt6.QtGui import QPixmap, QIntValidator, QImage
 from PyQt6.QtCore import QPointF
 import mgen
-import random
 from matplotlib import pyplot as plt
 from io import BytesIO
 
-
+# The item that is being rendered on the page
 class EditableTextItem(QGraphicsPixmapItem):
     def __init__(self, equation_type, difficulty, answer, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,7 +17,38 @@ class EditableTextItem(QGraphicsPixmapItem):
         self.drag_offset = QPointF(0, 0)  # Store the offset of the mouse click
         self.answer = answer
 
+    def setPlainText(self, text):
+        self.text = text
+        fig = plt.figure(figsize=(6, 5), facecolor='none')  # Set transparent background
+
+        # Use Times New Roman font
+        plt.rcParams['mathtext.fontset'] = 'custom'
+        plt.rcParams['mathtext.rm'] = 'Times New Roman'
+        plt.rcParams['mathtext.it'] = 'Times New Roman:italic'
+        plt.rcParams['mathtext.bf'] = 'Times New Roman:bold'
+
+        text_obj = plt.text(0, 0, f'${text}$', fontname='Times New Roman', size=12, ha='center', va='center', color='black')
+        plt.axis('off')
+
+        renderer = fig.canvas.get_renderer()
+        bbox = text_obj.get_window_extent(renderer)
+
+        fig.set_size_inches(bbox.width / renderer.dpi * 0.5, bbox.height / renderer.dpi * 0.5)
+
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight', transparent=True)
+        plt.close(fig)
+        buf.seek(0)
+
+        # Load as QImage for transparency
+        image = QImage()
+        image.loadFromData(buf.read())
+
+        pixmap = QPixmap.fromImage(image)
+        self.setPixmap(pixmap)
+
     def mouseDoubleClickEvent(self, event):
+        # Existing code for the double click event
         try:
             dialog = QDialog()
             dialog.setWindowTitle(self.equation_type)
@@ -70,30 +100,6 @@ class EditableTextItem(QGraphicsPixmapItem):
         else:
             super().mouseMoveEvent(event)
 
-    def setPlainText(self, text):
-        self.text = text
-        fig = plt.figure(figsize=(6, 5), facecolor='none')  # Set transparent background
-
-        text_obj = plt.text(0, 0, f'${text}$', size=20, ha='center', va='center', color='black')  # Set text color
-        plt.axis('off')
-
-        renderer = fig.canvas.get_renderer()
-        bbox = text_obj.get_window_extent(renderer)
-
-        fig.set_size_inches(bbox.width / renderer.dpi * 0.5, bbox.height / renderer.dpi * 0.5)
-
-        buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', transparent=True)  # Set transparency
-        plt.close(fig)
-        buf.seek(0)
-
-        # Load as QImage for transparency
-        image = QImage()
-        image.loadFromData(buf.read())
-
-        pixmap = QPixmap.fromImage(image)
-        self.setPixmap(pixmap)
-
 
 class ExampleTextItem(QGraphicsPixmapItem):
     def __init__(self, equation_type, difficulty, answer, *args, **kwargs):
@@ -106,9 +112,15 @@ class ExampleTextItem(QGraphicsPixmapItem):
         self.text = text
         fig = plt.figure(figsize=(6, 5), facecolor='none')  # Set transparent background
 
-        text_obj = plt.text(-10, 0.5, f'${text}$', size=15, ha='left', va='center', color='black')
+        # Use Times New Roman font
+        plt.rcParams['mathtext.fontset'] = 'custom'
+        plt.rcParams['mathtext.rm'] = 'Times New Roman'
+        plt.rcParams['mathtext.it'] = 'Times New Roman:italic'
+        plt.rcParams['mathtext.bf'] = 'Times New Roman:bold'
+
+        text_obj = plt.text(-10, 0.5, f'${text}$', fontname='Times New Roman', size=15, ha='left', va='center', color='black')
         if self.answer != "None":
-            plt.text(-10, -2, f'Answer: {self.answer}', size=10, ha='left', va='center', color='red')
+            plt.text(-10, -2, f'Answer: {self.answer}', fontname='Times New Roman', size=10, ha='left', va='center', color='red')
 
         plt.axis('off')
 
@@ -118,7 +130,7 @@ class ExampleTextItem(QGraphicsPixmapItem):
         fig.set_size_inches(bbox.width / renderer.dpi * 0.5, bbox.height / renderer.dpi * 0.5)
 
         buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', transparent=True)  # Set transparency
+        plt.savefig(buf, format='png', bbox_inches='tight', transparent=True)
         plt.close(fig)
         buf.seek(0)
 
@@ -128,7 +140,6 @@ class ExampleTextItem(QGraphicsPixmapItem):
 
         pixmap = QPixmap.fromImage(image)
         self.setPixmap(pixmap)
-
 
 def create_question_dialog(self, equation_type, generate_equation_func):
     try:
@@ -152,17 +163,17 @@ def create_question_dialog(self, equation_type, generate_equation_func):
                 if equation_type == "Graphing Quadratics":
                     # Display the question text (for all question types)
                     equation_item = ExampleTextItem(equation_type, difficulty, "None")
-                    equation_item.setPlainText(equation_text) # Don't pass the answer here
+                    equation_item.setPlainText(equation_text)
                     equation_item.setPos(0, y_pos)
                     scene.addItem(equation_item)
 
                     # Update y_pos for the next question
-                    y_pos += equation_item.boundingRect().height() + 20
-                    # If it's a "Graphing Quadratics" question, display the graph
+                    y_pos += equation_item.boundingRect().height() + 10
+                    # Displays the graph for a "Graphing Quadratics" question
                     pixmap_item = QGraphicsPixmapItem(answer)
 
                     # Scale the image
-                    max_width = 200  # Set the maximum width you want
+                    max_width = 200
                     pixmap_item.setScale(max_width / pixmap_item.pixmap().width())
 
                     scene.addItem(pixmap_item)
@@ -184,7 +195,7 @@ def create_question_dialog(self, equation_type, generate_equation_func):
             nonlocal diff
             diff = new_diff
             update_example_equations()
-
+        # Connect all the buttons to interact with their respected difficulty
         dialog.easyButton.clicked.connect(lambda: set_difficulty("Easy"))
         dialog.mediumButton.clicked.connect(lambda: set_difficulty("Medium"))
         dialog.hardButton.clicked.connect(lambda: set_difficulty("Hard"))
@@ -192,7 +203,7 @@ def create_question_dialog(self, equation_type, generate_equation_func):
 
         update_example_equations()
 
-        # Number of Questions Input
+        # Number of Questions Input <- Validation, so it doesn't overload the program / take to long to render
         validator = QIntValidator(0, 99)
         dialog.numofqueLine.setValidator(validator)
 
@@ -206,6 +217,7 @@ def create_question_dialog(self, equation_type, generate_equation_func):
 
         dialog.numofqueLine.textChanged.connect(enable_buttons)
 
+        # Adds equations in descending order
         def add_equations():
             num_of_equations = int(dialog.numofqueLine.text())
 
@@ -214,7 +226,7 @@ def create_question_dialog(self, equation_type, generate_equation_func):
 
             for _ in range(num_of_equations):
                 difficulty, equation_text, answer = generate_equation_func(diff)
-                equation_item = EditableTextItem(equation_text, difficulty, answer)
+                equation_item = EditableTextItem(equation_type, difficulty, answer)
                 equation_item.setPlainText(equation_text)
                 if self.selectedPage is not None:
                     self.selectedPage.scene().addItem(equation_item)
@@ -234,7 +246,7 @@ def create_question_dialog(self, equation_type, generate_equation_func):
         print(f"An error occurred: {e}")
 
 
-# Example usage
+# The popups for equations
 def linear_equation_popup(self):
     create_question_dialog(self, "Linear Equation", mgen.generate_linear_equation)
 
