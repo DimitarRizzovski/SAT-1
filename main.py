@@ -1,218 +1,310 @@
 import os
+import sys
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPainter, QPageSize
+from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QScrollArea, QSizePolicy, QVBoxLayout, QTabWidget,
-    QDialog, QFileDialog, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QMessageBox,
-    QLineEdit, QListWidget, QPushButton, QLabel, QWidget
+    QApplication, QMainWindow, QVBoxLayout, QFileDialog, QGraphicsView, QMessageBox
 )
 from PyQt6.uic import loadUi
-from PyQt6.QtGui import QPainter, QPageSize, QAction
-from PyQt6.QtPrintSupport import QPrinter
-from PyQt6.QtCore import Qt
-import qd
-import sae
-
-
-class SelectableGraphicsView(QGraphicsView):
-    """
-    A QGraphicsView subclass that detects user input to select a page.
-    """
-
-    def __init__(self, scene, page_number, parent=None):
-        super().__init__(scene, parent)
-        self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-        self.isSelected = False
-        self.page_number = page_number
-
-    def mouseDoubleClickEvent(self, event):
-        """
-        Handles double-click events to select the page.
-        """
-        for view in self.parent().findChildren(SelectableGraphicsView):
-            view.isSelected = False
-            view.setStyleSheet("border: 2px solid black")
-        self.isSelected = True
-        self.setStyleSheet("border: 2px solid blue")
-        self.parent().selectedPage = self
-        super().mouseDoubleClickEvent(event)
+from backend import sae, qd
+from backend.connections import setup_ui_elements, setup_connections
+from pages import intro_page, question_page, answer_page
 
 
 class MyGui(QMainWindow):
     """
-    The main GUI class
+    Main GUI class for the program
+
+    This class sets up the main window, initialises UI components, manages pages
+    (title, question, and answer), and handles user interactions such as adding
+    equations, saving projects, and exporting to a PDF file.
     """
 
     def __init__(self):
+        """
+        Initialise the main GUI window.
+
+        Loads the UI layout from a .ui file, sets up initial directories,
+        initialises counters for question and answer pages, and configures
+        the initial selection and display state.
+        """
         super().__init__()
-        loadUi('main.ui', self)
+        loadUi('frontend/main.ui', self)  # Load the UI design from a .ui file
+        self.current_save_file = None  # Path to the current save file
+        self.saves_dir = "saves"  # Directory to store save files
+        self.questionPageCount = 0  # Counter for question pages
+        self.answerPageCount = 0  # Counter for answer pages
+        self.selectedPage = None  # Currently selected page
 
-        # Initialise variables
-        self.current_save_file = None
-        self.saves_dir = "saves"
-        self.questionPageCount = 0
-        self.answerPageCount = 0
-        self.selectedPage = None
-
-        # Ensure the saves directory exists
+        # Create the saves directory if it doesn't exist
         if not os.path.exists(self.saves_dir):
             os.makedirs(self.saves_dir)
 
-        # Set up UI elements and connections
-        self.setup_ui_elements()
-        self.setup_connections()
+        # Set up UI elements and their connections
+        setup_ui_elements(self)
+        setup_connections(self)
 
-        # Initialise pages
+        # Create initial pages
         self.create_title_page()
         self.add_question_page()
         self.add_answer_page()
 
-        # Select the first question page by default
+        # Select and highlight the first question page by default
         first_question_page = self.scrollAreaQuestionWidgetContents.layout().itemAt(0).widget()
         first_question_page.isSelected = True
         first_question_page.setStyleSheet("border: 2px solid blue")
+        self.selectedPage = first_question_page
 
-        # Show the main window maximized
+        # Display the window maximised
         self.showMaximized()
         self.show()
 
-    def setup_ui_elements(self):
+    def create_page(self, page_type, page_number=None):
         """
-        Finds and initialises UI elements.
-        """
-        self.scrollAreaTitlePageWidgetContents = self.findChild(QWidget, 'scrollAreaTitlePageWidgetContents')
-        self.scrollAreaQuestionWidgetContents = self.findChild(QWidget, 'scrollAreaQuestionWidgetContents')
-        self.scrollAreaAnswersWidgetContents = self.findChild(QWidget, 'scrollAreaAnswersWidgetContents')
-        self.tabWidget = self.findChild(QTabWidget, 'tabWidget')
-
-        self.addPage = self.findChild(QPushButton, 'addPage')
-        self.deletePage = self.findChild(QPushButton, 'deletePage')
-        self.searchMathEquations = self.findChild(QLineEdit, 'searchMathEquations')
-        self.mathQuestions = self.findChild(QListWidget, 'mathQuestions')
-
-        self.actionPDF = self.findChild(QAction, 'actionPDF')
-        self.actionSave = self.findChild(QAction, 'actionSave')
-        self.actionSave_As = self.findChild(QAction, 'actionSave_As')
-        self.actionOpen = self.findChild(QAction, 'actionOpen_2')
-        self.actionExit = self.findChild(QAction, 'actionExit')
-
-    def setup_connections(self):
-        """
-        Connects UI elements to their respective event handlers.
-        """
-        self.tabWidget.currentChanged.connect(self.on_tab_changed)
-        self.actionPDF.triggered.connect(self.save_pdf)
-        self.addPage.clicked.connect(self.add_question_page)
-        self.deletePage.clicked.connect(self.delete_page)
-        self.searchMathEquations.textChanged.connect(self.search_equations)
-        self.mathQuestions.itemDoubleClicked.connect(self.add_equation)
-        self.actionSave.triggered.connect(self.save_project)
-        self.actionSave_As.triggered.connect(self.save_project_as)
-        self.actionOpen.triggered.connect(self.open_project)
-        self.actionExit.triggered.connect(self.exit_application)
-
-    # Page Management Methods
-
-    def create_page(self, scene, scroll_area_widget_contents, page_count, page_type):
-        """
-        Creates a new page and adds it to the specified scroll area.
+        Create a new page of the specified type.
 
         Args:
-            scene (QGraphicsScene): The scene to be displayed in the page.
-            scroll_area_widget_contents (QWidget): The container widget for the pages.
-            page_count (int): The current count of pages.
-            page_type (str): The type of page ("Title", "Question", "Answer").
-        """
-        view = SelectableGraphicsView(scene, page_count, self)
-        view.setFixedSize(794, 1150)
-        scene.setSceneRect(0, 0, 794, 1123)
-        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            page_type (str): The type of page to create ('Title', 'Question', 'Answer').
+            page_number (int, optional): Specific page number to assign. If None, increments counters.
 
+        Returns:
+            QWidget: The created page widget.
+
+        Raises:
+            ValueError: If an unknown page type is provided.
+        """
+        if page_type == "Title":
+            if page_number is None:
+                page_number = 0
+            page = intro_page.IntroPage(page_number, self)
+            scroll_area_widget_contents = self.scrollAreaTitlePageWidgetContents
+        elif page_type == "Question":
+            if page_number is None:
+                self.questionPageCount += 1
+                page_number = self.questionPageCount
+            else:
+                self.questionPageCount = max(self.questionPageCount, page_number)
+            page = question_page.QuestionPage(page_number, self)
+            scroll_area_widget_contents = self.scrollAreaQuestionWidgetContents
+        elif page_type == "Answer":
+            if page_number is None:
+                self.answerPageCount += 1
+                page_number = self.answerPageCount
+            else:
+                self.answerPageCount = max(self.answerPageCount, page_number)
+            page = answer_page.AnswerPage(page_number, self)
+            scroll_area_widget_contents = self.scrollAreaAnswersWidgetContents
+        else:
+            raise ValueError(f"Unknown page type: {page_type}")
+
+        # Initialise layout if not already set
         if scroll_area_widget_contents.layout() is None:
             layout = QVBoxLayout()
             layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             scroll_area_widget_contents.setLayout(layout)
-        scroll_area_widget_contents.layout().addWidget(view)
 
-        # Add page number label
-        if page_type != "Title":
-            page_number_label = QGraphicsTextItem(f"Page {page_count}")
-            scene.addItem(page_number_label)
-            x = (scene.width() - page_number_label.boundingRect().width()) / 2
-            y = scene.height() - page_number_label.boundingRect().height()
-            page_number_label.setPos(x, y)
-
-        view.setObjectName(f"{page_type} Page {page_count}")
-        if page_type == "Question":
-            view.setStyleSheet("border: 2px solid black")  # Add border for question pages
-
-        return view
+        # Add the created page to the appropriate scroll area
+        scroll_area_widget_contents.layout().addWidget(page)
+        return page
 
     def create_title_page(self):
-        """
-        Creates the title page.
-        """
-        scene_intro = QGraphicsScene()
-        self.create_page(scene_intro, self.scrollAreaTitlePageWidgetContents, 0, "Title")
+        """Create the title page."""
+        self.create_page("Title")
 
     def add_question_page(self):
-        """
-        Adds a new question page.
-        """
-        self.questionPageCount += 1
-        scene = QGraphicsScene()
-        self.create_page(scene, self.scrollAreaQuestionWidgetContents, self.questionPageCount, "Question")
+        """Add a new question page."""
+        self.create_page("Question")
 
     def add_answer_page(self):
+        """Add a new answer page."""
+        self.create_page("Answer")
+
+    def create_answer_page_with_number(self, page_number):
         """
-        Adds a new answer page.
+        Create an answer page with a specific page number.
+
+        Args:
+            page_number (int): The page number for the new answer page.
+
+        Returns:
+            AnswerPage: The created answer page widget.
         """
+        page = answer_page.AnswerPage(page_number, self)
+        scroll_area_widget_contents = self.scrollAreaAnswersWidgetContents
+
+        # Initialise layout if not already set
+        if scroll_area_widget_contents.layout() is None:
+            layout = QVBoxLayout()
+            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            scroll_area_widget_contents.setLayout(layout)
+
+        # Add the created page to the answers scroll area
+        scroll_area_widget_contents.layout().addWidget(page)
         self.answerPageCount += 1
-        scene = QGraphicsScene()
-        self.create_page(scene, self.scrollAreaAnswersWidgetContents, self.answerPageCount, "Answer")
+        return page
+
+    def get_answer_page(self, page_number):
+        """
+        Retrieve an answer page by its page number.
+
+        Args:
+            page_number (int): The page number of the answer page to retrieve.
+
+        Returns:
+            AnswerPage or None: The matching answer page if found, else None.
+        """
+        answer_layout = self.scrollAreaAnswersWidgetContents.layout()
+        if answer_layout is not None:
+            for i in range(answer_layout.count()):
+                page = answer_layout.itemAt(i).widget()
+                if page.page_number == page_number:
+                    return page
+        return None
 
     def delete_page(self):
         """
-        Deletes the currently selected page.
+        Delete the currently selected page.
+
+        Prompts the user for confirmation before deletion and handles any errors.
         """
         try:
             if self.selectedPage is None:
+                QMessageBox.warning(self, "No Selection", "Please select a page to delete.")
+                return
+            if self.questionPageCount == 1:
+                QMessageBox.warning(self, "First Page", "You cannot delete the first page")
                 return
 
-            layout = self.selectedPage.parent().layout()
-            if layout is not None:
-                index = layout.indexOf(self.selectedPage)
-                if index != -1:
-                    widget_to_remove = layout.itemAt(index).widget()
-                    layout.removeWidget(widget_to_remove)
-                    widget_to_remove.setParent(None)
+            # Determine which layout contains the selectedPage
+            page = self.selectedPage
+            parent_layout = None
+            page_type = None
 
-                    # Update page counts
-                    if self.selectedPage in self.scrollAreaQuestionWidgetContents.findChildren(SelectableGraphicsView):
+            # Check if the selectedPage is in Title Page layout
+            title_layout = self.scrollAreaTitlePageWidgetContents.layout()
+            if title_layout is not None:
+                for i in range(title_layout.count()):
+                    if title_layout.itemAt(i).widget() == page:
+                        parent_layout = title_layout
+                        page_type = "Title"
+                        break
+
+            # Check if the selectedPage is in Question Page layout
+            if parent_layout is None:
+                question_layout = self.scrollAreaQuestionWidgetContents.layout()
+                if question_layout is not None:
+                    for i in range(question_layout.count()):
+                        if question_layout.itemAt(i).widget() == page:
+                            parent_layout = question_layout
+                            page_type = "Question"
+                            break
+
+            # Check if the selectedPage is in Answer Page layout
+            if parent_layout is None:
+                answer_layout = self.scrollAreaAnswersWidgetContents.layout()
+                if answer_layout is not None:
+                    for i in range(answer_layout.count()):
+                        if answer_layout.itemAt(i).widget() == page:
+                            parent_layout = answer_layout
+                            page_type = "Answer"
+                            break
+
+            if parent_layout is None:
+                QMessageBox.warning(self, "Error", "Could not find the selected page in any layout.")
+                return
+
+            # Confirm deletion with the user
+            reply = QMessageBox.question(
+                self, 'Confirm Deletion',
+                f"Are you sure you want to delete the selected {page_type} page?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                # Remove the page from the layout
+                index_to_remove = None
+                for i in range(parent_layout.count()):
+                    if parent_layout.itemAt(i).widget() == page:
+                        index_to_remove = i
+                        break
+                if index_to_remove is not None:
+                    item = parent_layout.takeAt(index_to_remove)
+                    if item:
+                        widget = item.widget()
+                        if widget:
+                            widget.deleteLater()
+                    # Update page counts if necessary
+                    if page_type == "Question":
                         self.questionPageCount -= 1
-                    elif self.selectedPage in self.scrollAreaAnswersWidgetContents.findChildren(SelectableGraphicsView):
+                    elif page_type == "Answer":
                         self.answerPageCount -= 1
+                    elif page_type == "Title":
+                        pass  # Title page count is always 1
 
+                    # Update selectedPage
                     self.selectedPage = None
+
+                    QMessageBox.information(self, "Deleted", "Selected page has been deleted.")
+                else:
+                    QMessageBox.warning(self, "Error", "Could not remove the page from the layout.")
+            else:
+                # User cancelled deletion
+                pass
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while deleting the page: {e}")
 
-    # Event Handlers
+    def delete_items(self):
+        """
+        Delete selected items from the currently selected page.
+
+        Prompts the user for confirmation before deletion and handles any errors.
+        """
+        try:
+            if self.selectedPage is None:
+                QMessageBox.warning(self, "No Selection", "Please select a page to delete items from.")
+                return
+
+            scene = self.selectedPage.scene()
+            if scene is None:
+                QMessageBox.warning(self, "No Scene", "Selected page has no scene.")
+                return
+
+            selected_items = scene.selectedItems()
+            if not selected_items:
+                QMessageBox.warning(self, "No Selection", "Please select one or more items to delete.")
+                return
+
+            # Confirm deletion with the user
+            reply = QMessageBox.question(
+                self, 'Confirm Deletion',
+                f"Are you sure you want to delete the selected {len(selected_items)} item(s)?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                for item in selected_items:
+                    scene.removeItem(item)
+                QMessageBox.information(self, "Deleted", "Selected items have been deleted.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred while deleting items: {e}")
 
     def on_tab_changed(self, index):
         """
-        Handles tab change events.
+        Handle the event when the user changes tabs.
 
         Args:
-            index (int): The index of the selected tab.
+            index (int): The index of the newly selected tab.
         """
         try:
-            for view in self.findChildren(SelectableGraphicsView):
-                view.isSelected = False
-                view.setStyleSheet("border: 2px solid black")
-            self.selectedPage = None
+            # Deselect all QGraphicsView widgets and reset the boarder
+            for view in self.findChildren(QGraphicsView):
+                if hasattr(view, 'isSelected'):
+                    view.isSelected = False
+                    view.setStyleSheet("border: 2px solid black")
 
+            # Determine which layout corresponds to the selected tab
             if index == 0:
                 selected_page_layout = self.scrollAreaTitlePageWidgetContents.layout()
             elif index == 1:
@@ -220,19 +312,26 @@ class MyGui(QMainWindow):
             elif index == 2:
                 selected_page_layout = self.scrollAreaAnswersWidgetContents.layout()
             else:
+                QMessageBox.warning(self, "Invalid Tab", f"Tab index {index} is not recognised.")
                 return
 
+            # Select and highlight the first page in the selected tab
             if selected_page_layout is not None and selected_page_layout.count() > 0:
-                selected_page = selected_page_layout.itemAt(0).widget()
-                selected_page.isSelected = True
-                selected_page.setStyleSheet("border: 2px solid blue")
-                self.selectedPage = selected_page
+                first_page = selected_page_layout.itemAt(0).widget()
+                if first_page:
+                    first_page.isSelected = True
+                    first_page.setStyleSheet("border: 2px solid blue")
+                    self.selectedPage = first_page
+            else:
+                QMessageBox.information(self, "No Pages", "There are no pages in this tab to select.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while changing tabs: {e}")
 
     def search_equations(self):
         """
-        Filters the list of math equations based on the search input.
+        Search for equations based on the text input.
+
+        Hides items that do not match the search query and shows those that do.
         """
         search_text = self.searchMathEquations.text().lower()
         for i in range(self.mathQuestions.count()):
@@ -244,16 +343,17 @@ class MyGui(QMainWindow):
 
     def add_equation(self, item):
         """
-        Adds the selected equation to the currently selected page.
+        Add an equation to the selected page based on the selected item.
 
         Args:
-            item (QListWidgetItem): The selected equation item.
+            item (QListWidgetItem): The item representing the equation type.
+
+        Displays warnings if no page is selected or if the equation type is not implemented.
         """
-        # Find the currently selected page
-        for view in self.findChildren(SelectableGraphicsView):
-            if view.isSelected:
-                self.selectedPage = view
-                break
+        selected_page = self.selectedPage
+        if selected_page is None:
+            QMessageBox.warning(self, "No Page Selected", "Please select a page to add the equation.")
+            return
 
         equation_type = item.text().strip()
         equation_functions = {
@@ -261,73 +361,71 @@ class MyGui(QMainWindow):
             "3B Factorising": qd.factorise_equation_popup,
             "3C Quadratic Equations": qd.quadratic,
             "3D Graphing Quadratics": qd.graph_quadratic,
-            "3E Graphing Quadratics": lambda self: QMessageBox.information(self, "Not Done", "Not Done"),
-            "3F Completing The Square And Turning Points": lambda self: QMessageBox.information(self, "Not Done",
-                                                                                                "Not Done"),
-            "3G Solving Quadratic Inequalities": lambda self: QMessageBox.information(self, "Not Done", "Not Done"),
-            "3H The General Quadratic Formula": lambda self: QMessageBox.information(self, "Not Done", "Not Done"),
-            "3I The Discriminant": lambda self: QMessageBox.information(self, "Not Done", "Not Done"),
-            "3J Solving Simultaneous Linear and Quadratic Equations": lambda self: QMessageBox.information(self,
-                                                                                                           "Not Done",
-                                                                                                           "Not Done"),
-            "3K Families of Quadratic Polynomial Functions": lambda self: QMessageBox.information(self, "Not Done",
-                                                                                                  "Not Done"),
-            "3L Quadratic Models": lambda self: QMessageBox.information(self, "Not Done", "Not Done"),
+            "3E Completing the square and turning points": qd.completing_the_square,
+            "3F Solving Quadratic Inequalities": qd.quadratic_inequality
         }
 
+        # Retrieve the function corresponding to the equation type
         func = equation_functions.get(equation_type)
         if func:
-            func(self)
+            if callable(func):
+                func(self)  # Execute the function to add the equation
         else:
             QMessageBox.warning(self, "Not Implemented", f"The equation type '{equation_type}' is not implemented yet.")
 
-    # File Operations
-
     def save_pdf(self):
         """
-        Saves the current project as a PDF file.
+        Export the current project as a PDF file.
+
+        Prompts the user to select a save location and handles the rendering
+        of each page into the PDF. Notifies the user upon success or failure.
         """
         try:
             file_name, _ = QFileDialog.getSaveFileName(self, "Save PDF", "", "PDF Files (*.pdf);;All Files (*)")
             if not file_name:
-                return
+                return  # User cancelled the save dialog
 
-            printer = QPrinter(QPrinter.PrinterMode.PrinterResolution)
-            printer.setResolution(96)
-            printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+            printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))  # Set paper size to A4
             printer.setOutputFileName(file_name)
-
             painter = QPainter()
+
             if not painter.begin(printer):
                 QMessageBox.warning(self, "Error", "Failed to open file for writing.")
                 return
 
-            # Render the title page
+            # Render the title page if it exists
             title_layout = self.scrollAreaTitlePageWidgetContents.layout()
             if title_layout and title_layout.count() > 0:
                 title_page = title_layout.itemAt(0).widget()
-                title_page.scene().render(painter)
+                title_page.render(painter)
 
-            # Render question pages
-            for i in range(self.questionPageCount):
-                if i > 0 or (title_layout and self.questionPageCount > 0):
-                    printer.newPage()
-                question_page = self.scrollAreaQuestionWidgetContents.layout().itemAt(i).widget()
-                question_page.scene().render(painter)
+            # Render each question page
+            question_layout = self.scrollAreaQuestionWidgetContents.layout()
+            for i in range(question_layout.count()):
+                if i > 0 or (title_layout and question_layout.count() > 0):
+                    printer.newPage()  # Start a new page in the PDF
+                question_page_widget = question_layout.itemAt(i).widget()
+                question_page_widget.render(painter)
 
-            # Render answer pages
-            for i in range(self.answerPageCount):
+            # Render each answer page
+            answer_layout = self.scrollAreaAnswersWidgetContents.layout()
+            for i in range(answer_layout.count()):
                 printer.newPage()
-                answer_page = self.scrollAreaAnswersWidgetContents.layout().itemAt(i).widget()
-                answer_page.scene().render(painter)
+                answer_page_widget = answer_layout.itemAt(i).widget()
+                answer_page_widget.render(painter)
 
             painter.end()
+            QMessageBox.information(self, "Success", "PDF saved successfully.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while saving the PDF: {e}")
 
     def save_project(self):
         """
-        Saves the current project to a file.
+        Save the current project.
+
+        If a save file already exists, it saves to that file. Otherwise, it
+        prompts the user to choose a save location.
         """
         try:
             if self.current_save_file:
@@ -339,45 +437,63 @@ class MyGui(QMainWindow):
 
     def save_project_as(self):
         """
-        Opens a dialog to save the project to a new file.
+        Save the current project with a new file name.
+
+        Prompts the user to choose a location and file name for the project
+        and updates the current save file path accordingly.
         """
         try:
-            file_name, _ = QFileDialog.getSaveFileName(self, "Save Project As", "",
-                                                       "Math Worksheet Projects (*.mwp);;All Files (*)")
+            file_name, _ = QFileDialog.getSaveFileName(
+                self, "Save Project As", "",
+                "Math Worksheet Projects (*.mwp);;All Files (*)"
+            )
             if file_name:
                 self.current_save_file = file_name
                 sae.save_project_data(self, file_name)
+                QMessageBox.information(self, "Success", "Project saved successfully.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while saving the project: {e}")
 
     def open_project(self):
         """
-        Opens an existing project file.
+        Open an existing project file.
+
+        Prompts the user to select a project file and loads its data into the application.
+        Updates the current save file path upon successful loading.
         """
         try:
-            file_name, _ = QFileDialog.getOpenFileName(self, "Open Project", "",
-                                                       "Math Worksheet Projects (*.mwp);;All Files (*)")
+            file_name, _ = QFileDialog.getOpenFileName(
+                self, "Open Project", "",
+                "Math Worksheet Projects (*.mwp);;All Files (*)"
+            )
             if file_name:
                 sae.load_project_data(self, file_name)
                 self.current_save_file = file_name
+                QMessageBox.information(self, "Success", "Project loaded successfully.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while opening the project: {e}")
 
     def exit_application(self):
         """
-        This is not fully implemented yet
+        Exit the application safely.
+
+        Calls the backend method to handle any necessary cleanup before exiting.
         """
-        sae.exit_application(self)
+        try:
+            sae.exit_application(self)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred while exiting the application: {e}")
 
 
-# Main Function
 def main():
     """
-    The main function to run the application.
+    The main entry point of the application.
+
+    Initialises the QApplication, creates the main window, and starts the event loop.
     """
     app = QApplication([])
     window = MyGui()
-    app.exec()
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':
