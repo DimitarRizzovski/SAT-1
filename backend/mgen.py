@@ -353,24 +353,25 @@ def solving_quadratic_inequality(difficulty):
     inequality_str = str(inequality_str).replace('**', '^').replace('*', '')
 
     # Determine the solution set based on the sign of 'a' and the inequality
+    # "\\ " means empty space
     if a > 0:
         if inequality_sign in ['>', '>=']:
-            solution = f"x < {r1} or x > {r2}"
+            solution = f"x < {r1}\\ or\\ x > {r2}"
             if inequality_sign == '>=':
-                solution += f" (including {r1} and {r2})"
+                solution += f"\\ (including\\ {r1}\\ and\\ {r2})"
         elif inequality_sign in ['<', '<=']:
             solution = f"{r1} < x < {r2}"
             if inequality_sign == '<=':
-                solution += f" (including {r1} and {r2})"
+                solution += f"\\ (including\\ {r1}\\ and\\ {r2})"
     else:  # a < 0
         if inequality_sign in ['>', '>=']:
             solution = f"{r1} < x < {r2}"
             if inequality_sign == '>=':
-                solution += f" (including {r1} and {r2})"
+                solution += f"\\ (including\\ {r1}\\ and\\ {r2})"
         elif inequality_sign in ['<', '<=']:
-            solution = f"x < {r1} or x > {r2}"
+            solution = f"x < {r1}\\ or\\ x > {r2}"
             if inequality_sign == '<=':
-                solution += f" (including {r1} and {r2})"
+                solution += f"\\ (including\\ {r1}\\ and\\ {r2})"
 
     return difficulty, inequality_str, solution
 
