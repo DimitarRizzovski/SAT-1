@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.uic import loadUi
 from PyQt6.QtGui import QPixmap, QIntValidator, QImage
-from PyQt6.QtCore import QPointF, QByteArray
+from PyQt6.QtCore import QPointF, QByteArray, Qt
 from backend import mgen
 from matplotlib import pyplot as plt
 from io import BytesIO
@@ -21,8 +21,13 @@ class BaseTextItem(QGraphicsPixmapItem):
     def __init__(self, *args, **kwargs):
         """
         Initialise the BaseTextItem with optional arguments.
+
+        Parameters:
+        - *args: Variable length argument list.
+        - **kwargs: Arbitrary keyword arguments.
         """
         super().__init__(*args, **kwargs)
+        self.text = ""
 
     def set_plain_text(self, text):
         """
@@ -47,7 +52,7 @@ class BaseTextItem(QGraphicsPixmapItem):
             text_obj = plt.text(
                 0, 0, f'${text}$',  # Render text as LaTeX
                 fontname='Times New Roman', size=25,
-                ha='left', va='bottom', colour='black'
+                ha='left', va='bottom', color='black'
             )
 
             # Remove axes for a better look
@@ -96,12 +101,12 @@ class EditableTextItem(BaseTextItem):
         - equation_type (str): The type of equation (e.g., "Linear Equation").
         - difficulty (str): The difficulty level (e.g., "Easy").
         - answer (str or QPixmap): The answer associated with the equation.
+        - *args: Variable length argument list.
+        - **kwargs: Arbitrary keyword arguments.
         """
         super().__init__(*args, **kwargs)
-        # Enable item to be movable and selectable within the scene
-        self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsMovable)
+        # Enable item to be selectable within the scene
         self.setFlag(QGraphicsPixmapItem.GraphicsItemFlag.ItemIsSelectable)
-
         self.equation_type = equation_type
         self.difficulty = difficulty
         self.drag_offset = QPointF(0, 0)
@@ -109,7 +114,7 @@ class EditableTextItem(BaseTextItem):
         # List to hold associated answer items
         self.answer_items = []
 
-    def mouse_press_event(self, event):
+    def mousePressEvent(self, event):
         """
         Handles the mouse press event to initiate dragging.
 
@@ -118,13 +123,13 @@ class EditableTextItem(BaseTextItem):
         """
         try:
             # Calculate the offset between the mouse position and the item's top-left corner
-            # This is because the item kept snapping to the top-left corner of the curser
+            # This prevents the item from snapping to the top-left corner of the cursor
             self.drag_offset = event.pos() - self.boundingRect().topLeft()
             super().mousePressEvent(event)
         except Exception as e:
-            print(f"An error occurred in mouse_press_event: {e}")
+            print(f"An error occurred in mousePressEvent: {e}")
 
-    def mouse_move_event(self, event):
+    def mouseMoveEvent(self, event):
         """
         Handles the mouse move event to implement snapping to a grid.
 
@@ -143,9 +148,9 @@ class EditableTextItem(BaseTextItem):
             else:
                 super().mouseMoveEvent(event)
         except Exception as e:
-            print(f"An error occurred in mouse_move_event: {e}")
+            print(f"An error occurred in mouseMoveEvent: {e}")
 
-    def mouse_double_click_event(self, event):
+    def mouseDoubleClickEvent(self, event):
         """
         Handles the mouse double-click event to show a dialog with question details.
 
@@ -182,7 +187,8 @@ class EditableTextItem(BaseTextItem):
             dialog.setLayout(layout)
             dialog.exec()
         except Exception as e:
-            print(f"An error occurred in mouse_double_click_event: {e}")
+            print(f"An error occurred in mouseDoubleClickEvent: {e}")
+
 
 # I use most of the same documentation here too since the classes are similar
 class ExampleTextItem(QGraphicsSvgItem):
@@ -199,6 +205,8 @@ class ExampleTextItem(QGraphicsSvgItem):
         - equation_type (str): The type of equation.
         - difficulty (str): The difficulty level.
         - answer (str): The answer associated with the equation.
+        - *args: Variable length argument list.
+        - **kwargs: Arbitrary keyword arguments.
         """
         super().__init__(*args, **kwargs)
         self.text = None
@@ -217,7 +225,7 @@ class ExampleTextItem(QGraphicsSvgItem):
         try:
             self.text = text
             # Create a Matplotlib figure with no background
-            fig = plt.figure(figsize=(1, 1), facecolour="None")
+            fig = plt.figure(figsize=(1, 1), facecolor="None")
 
             # Configure Matplotlib's mathtext to use Times New Roman font
             plt.rcParams['mathtext.fontset'] = 'custom'
@@ -229,7 +237,7 @@ class ExampleTextItem(QGraphicsSvgItem):
             text_obj = plt.text(
                 0, 0, f'${text}$',  # Render text as LaTeX
                 fontname='Times New Roman', size=30,
-                ha='left', va='bottom', colour='black'
+                ha='left', va='bottom', color='black'
             )
 
             # Optionally add the answer below the equation in red
@@ -237,7 +245,7 @@ class ExampleTextItem(QGraphicsSvgItem):
                 plt.text(
                     0, -0.6, f'Answer: {self.answer}',
                     fontname='Times New Roman', size=20,
-                    ha='left', va='bottom', colour='red'
+                    ha='left', va='bottom', color='red'
                 )
 
             # Remove axes for a better look
@@ -256,7 +264,10 @@ class ExampleTextItem(QGraphicsSvgItem):
 
             # Save the figure to a buffer in SVG format
             buf = BytesIO()
-            plt.savefig(buf, format='svg', bbox_inches='tight', transparent=True)
+            plt.savefig(
+                buf, format='svg', bbox_inches='tight',
+                transparent=True, dpi=fig.dpi
+            )
             plt.close(fig)
             buf.seek(0)
 
@@ -368,7 +379,7 @@ def create_question_dialog(main_window, equation_type, generate_equation_func):
 
         def enable_buttons():
             """
-            Enables or disables the OK and Add buttons based on the input in numofqueLine. (This is where the user specifies how many equations they want to add)
+            Enables or disables the OK and Add buttons based on the input in numofqueLine.
             """
             try:
                 if dialog.numofqueLine.text():
@@ -382,8 +393,6 @@ def create_question_dialog(main_window, equation_type, generate_equation_func):
 
         # Connect text change in numofqueLine to enable_buttons
         dialog.numofqueLine.textChanged.connect(enable_buttons)
-        # Dictionary to track y-positions for answers (Didn't finish this part :()
-        y_pos_answers = {}
 
         def add_equations():
             """
@@ -491,6 +500,21 @@ def create_question_dialog(main_window, equation_type, generate_equation_func):
                             continue
             except Exception as e:
                 print(f"An error occurred in add_equations: {e}")
+
+        def update_answer_positions(answer_page):
+            """
+            Updates the positions of answer items within the answer page.
+
+            Parameters:
+            - answer_page (AnswerPage): The answer page where positions are to be updated.
+            """
+            try:
+                y_pos = 10
+                for item in answer_page.answer_items:
+                    item.setPos(0, y_pos)
+                    y_pos += item.boundingRect().height() + 5
+            except Exception as e:
+                print(f"An error occurred in update_answer_positions: {e}")
 
         # Connect the OK button to add_equations and close the dialog
         dialog.okButton.clicked.connect(lambda: (add_equations(), dialog.close()))
