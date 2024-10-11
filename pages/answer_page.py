@@ -28,7 +28,7 @@ class AnswerPage(QGraphicsView):
         # Reference to the main application window
         self.main_window = main_window
 
-        # Enable anti-aliasing for smoother rendering of graphics and text
+        # Enable antialiasing for smoother rendering of graphics and text
         self.setRenderHints(
             QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing
         )
