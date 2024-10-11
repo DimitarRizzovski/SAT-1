@@ -1,11 +1,13 @@
-from PyQt6.QtWidgets import QMessageBox, QFileDialog, QGraphicsPixmapItem, QGraphicsTextItem, QGraphicsRectItem, \
-    QGraphicsLineItem
+from PyQt6.QtWidgets import (
+    QMessageBox, QFileDialog, QGraphicsPixmapItem, QGraphicsTextItem,
+    QGraphicsRectItem, QGraphicsLineItem
+)
 import json
 from backend import qd
 from backend.usertext import TextItem
 import base64
-from PyQt6.QtGui import QPixmap, QColor, QFont
-from PyQt6.QtCore import QBuffer
+from PyQt6.QtGui import QPixmap, QCursor
+from PyQt6.QtCore import QBuffer, Qt
 
 
 def save_project_data(main_window, file_name):
@@ -15,7 +17,8 @@ def save_project_data(main_window, file_name):
         data = get_project_data(main_window)
         with open(file_name, 'w') as f:
             json.dump(data, f, indent=4)
-        QMessageBox.information(main_window, "Success", "Project saved successfully.")
+        # Removed duplicate message to prevent "Project saved successfully" appearing twice
+        # QMessageBox.information(main_window, "Success", "Project saved successfully.")
     except Exception as e:
         QMessageBox.critical(main_window, "Error Saving", f"An error occurred while saving the project: {e}")
 
@@ -57,16 +60,22 @@ def get_project_data(main_window):
                     "parent_id": parent_id,
                 }
                 if isinstance(item, QGraphicsTextItem):
-                    text = item.toPlainText()
+                    html = item.toHtml()
                     position = (item.pos().x(), item.pos().y())
-                    font_str = item.font().toString()
-                    color_name = item.defaultTextColor().name()
                     item_data.update({
                         "type": "QGraphicsTextItem",
-                        "text": text,
+                        "html": html,
                         "position": position,
-                        "font": font_str,
-                        "color": color_name,
+                    })
+                    page_data["items"].append(item_data)
+                elif isinstance(item, TextItem):
+                    # Save HTML content to preserve formatting
+                    html = item.toHtml()
+                    position = (item.pos().x(), item.pos().y())
+                    item_data.update({
+                        "type": "TextItem",
+                        "html": html,
+                        "position": position,
                     })
                     page_data["items"].append(item_data)
                 elif isinstance(item, QGraphicsRectItem):
@@ -115,16 +124,8 @@ def get_project_data(main_window):
                             "position": (item.pos().x(), item.pos().y()),
                         }
                         page_data["items"].append(item_data)
-                    elif isinstance(item, qd.SeparatorItem):
-                        item_data = {
-                            "id": item_id_counter,
-                            "type": "SeparatorItem",
-                            "line": (item.line().x1(), item.line().y1(), item.line().x2(), item.line().y2()),
-                            "position": (item.pos().x(), item.pos().y()),
-                        }
-                        page_data["items"].append(item_data)
                     elif isinstance(item, QGraphicsPixmapItem):
-                        # Handle images (e.g. graphs)
+                        # Handle images (e.g., graphs)
                         # Convert the QPixmap to a base64 encoded string
                         buffer = QBuffer()
                         buffer.open(QBuffer.OpenModeFlag.ReadWrite)
@@ -138,32 +139,28 @@ def get_project_data(main_window):
                         }
                         page_data["items"].append(item_data)
                     elif isinstance(item, TextItem):
-                        # Handle TextItem
+                        # Save HTML content
+                        html = item.toHtml()
+                        position = (item.pos().x(), item.pos().y())
                         item_data = {
                             "id": item_id_counter,
                             "type": "TextItem",
-                            "text": item.toPlainText(),
-                            "position": (item.pos().x(), item.pos().y()),
-                            "font": item.font().toString(),
-                            "color": item.defaultTextColor().name()
+                            "html": html,
+                            "position": position,
                         }
                         page_data["items"].append(item_data)
                     elif isinstance(item, QGraphicsTextItem):
-                        # Handle QGraphicsTextItem
-                        text = item.toPlainText()
+                        # Save HTML content
+                        html = item.toHtml()
                         position = (item.pos().x(), item.pos().y())
-                        font_str = item.font().toString()
-                        color_name = item.defaultTextColor().name()
                         item_data = {
                             "id": item_id_counter,
                             "type": "QGraphicsTextItem",
-                            "text": text,
+                            "html": html,
                             "position": position,
-                            "font": font_str,
-                            "color": color_name,
                         }
                         page_data["items"].append(item_data)
-                    # Handle other item
+                    # Handle other item types
                 data["answers"].append(page_data)
     except Exception as e:
         QMessageBox.critical(main_window, "Error Collecting Answer Data",
@@ -207,29 +204,25 @@ def get_project_data(main_window):
                             item_data['answer'] = item.answer
                         page_data["items"].append(item_data)
                     elif isinstance(item, TextItem):
-                        # Handle TextItem
+                        # Save HTML content
+                        html = item.toHtml()
+                        position = (item.pos().x(), item.pos().y())
                         item_data = {
                             "id": item_id_counter,
                             "type": "TextItem",
-                            "text": item.toPlainText(),
-                            "position": (item.pos().x(), item.pos().y()),
-                            "font": item.font().toString(),
-                            "color": item.defaultTextColor().name()
+                            "html": html,
+                            "position": position,
                         }
                         page_data["items"].append(item_data)
                     elif isinstance(item, QGraphicsTextItem):
-                        # Handle QGraphicsTextItem
-                        text = item.toPlainText()
+                        # Save HTML content
+                        html = item.toHtml()
                         position = (item.pos().x(), item.pos().y())
-                        font_str = item.font().toString()
-                        color_name = item.defaultTextColor().name()
                         item_data = {
                             "id": item_id_counter,
                             "type": "QGraphicsTextItem",
-                            "text": text,
+                            "html": html,
                             "position": position,
-                            "font": font_str,
-                            "color": color_name,
                         }
                         page_data["items"].append(item_data)
                     # Handle other item types
@@ -285,8 +278,8 @@ def load_project_data(main_window, file_name):
             if intro_data:
                 page_data = intro_data[0]
                 page_number = page_data.get("page_number", 0)
-                # Create a new IntroPage
-                main_window.create_page("Title", page_number=page_number)
+                # Create a new IntroPage without default items
+                main_window.create_page("Title", page_number=page_number, add_default_items=False)
                 intro_page_widget = main_window.scrollAreaTitlePageWidgetContents.layout().itemAt(0).widget()
                 scene = intro_page_widget.scene()
                 # First pass: create items without setting parentItem
@@ -294,24 +287,40 @@ def load_project_data(main_window, file_name):
                     item_id = item_data.get("id")
                     item_type = item_data.get("type")
                     if item_type == "QGraphicsTextItem":
-                        text = item_data.get("text")
+                        html = item_data.get("html")
                         position = item_data.get("position", (0, 0))
-                        font_str = item_data.get("font")
-                        color_name = item_data.get("color")
 
-                        item = QGraphicsTextItem(text)
+                        item = QGraphicsTextItem()
+                        item.setHtml(html)
                         item.setPos(*position)
 
-                        # Restore font
-                        if font_str:
-                            font = QFont()
-                            font.fromString(font_str)
-                            item.setFont(font)
+                        # Set flags to make it editable and movable
+                        item.setTextInteractionFlags(
+                            Qt.TextInteractionFlag.TextEditable | Qt.TextInteractionFlag.TextEditorInteraction)
+                        item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsMovable, True)
+                        item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsSelectable, True)
+                        item.setCursor(QCursor(Qt.CursorShape.IBeamCursor))
 
-                        # Restore color
-                        if color_name:
-                            color = QColor(color_name)
-                            item.setDefaultTextColor(color)
+                        scene.addItem(item)
+                        id_item_map[item_id] = item
+                    elif item_type == "TextItem":
+                        html = item_data.get("html")
+                        position = item_data.get("position", (0, 0))
+
+                        item = TextItem()
+                        item.setHtml(html)
+                        item.setPos(*position)
+                        # Set flags to make it editable and movable
+                        item.setTextInteractionFlags(
+                            Qt.TextInteractionFlag.TextEditable | Qt.TextInteractionFlag.TextEditorInteraction)
+                        item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsMovable, True)
+                        item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsSelectable, True)
+                        item.setCursor(QCursor(Qt.CursorShape.IBeamCursor))
+
+                        # Connect signals
+                        item.itemSelected.connect(main_window.on_text_item_selected)
+                        item.itemDeselected.connect(main_window.on_text_item_deselected)
+                        item.selectionChanged.connect(main_window.on_text_selection_changed)
 
                         scene.addItem(item)
                         id_item_map[item_id] = item
@@ -346,7 +355,6 @@ def load_project_data(main_window, file_name):
                                  f"An error occurred while loading intro page data: {e}")
 
         # Load answer pages first to recreate answer items
-        answer_scenes = []
         for page_data in data.get("answers", []):
             page_number = page_data.get("page_number")
             main_window.create_page("Answer", page_number=page_number)
@@ -362,8 +370,6 @@ def load_project_data(main_window, file_name):
                 QMessageBox.warning(main_window, "Warning", f"Could not find answer page {page_number}")
                 continue
             scene = answer_page_widget.scene()
-            # Keep track of scenes
-            answer_scenes.append(scene)
             # First pass: create items
             for item_data in page_data.get("items", []):
                 item_id = item_data.get("id")
@@ -375,17 +381,6 @@ def load_project_data(main_window, file_name):
                     # Create the AnswerTextItem
                     item = qd.AnswerTextItem()
                     item.set_plain_text(text)
-                    item.setPos(*position)
-                    scene.addItem(item)
-                    # Map ID to item
-                    id_item_map[item_id] = item
-                elif item_type == "SeparatorItem":
-                    position = item_data.get("position", (0, 0))
-                    line = item_data.get("line", (0, 0, 0, 0))
-
-                    # Create the SeparatorItem
-                    item = qd.SeparatorItem()
-                    item.setLine(*line)
                     item.setPos(*position)
                     scene.addItem(item)
                     # Map ID to item
@@ -406,48 +401,42 @@ def load_project_data(main_window, file_name):
                     # Map ID to item
                     id_item_map[item_id] = item
                 elif item_type == "TextItem":
-                    text = item_data.get("text")
+                    html = item_data.get("html")
                     position = item_data.get("position", (0, 0))
-                    font_str = item_data.get("font")
-                    color_name = item_data.get("color")
 
                     # Create the TextItem
-                    item = TextItem(text)
+                    item = TextItem()
+                    item.setHtml(html)
                     item.setPos(*position)
+                    # Set flags
+                    item.setTextInteractionFlags(
+                        Qt.TextInteractionFlag.TextEditable | Qt.TextInteractionFlag.TextEditorInteraction)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsMovable, True)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsSelectable, True)
+                    item.setCursor(QCursor(Qt.CursorShape.IBeamCursor))
 
-                    # Restore font
-                    if font_str:
-                        font = QFont()
-                        font.fromString(font_str)
-                        item.setFont(font)
-
-                    # Restore color
-                    if color_name:
-                        color = QColor(color_name)
-                        item.setDefaultTextColor(color)
+                    # Connect signals
+                    item.itemSelected.connect(main_window.on_text_item_selected)
+                    item.itemDeselected.connect(main_window.on_text_item_deselected)
+                    item.selectionChanged.connect(main_window.on_text_selection_changed)
 
                     scene.addItem(item)
                     # Map ID to item
                     id_item_map[item_id] = item
                 elif item_type == "QGraphicsTextItem":
-                    text = item_data.get("text")
+                    html = item_data.get("html")
                     position = item_data.get("position", (0, 0))
-                    font_str = item_data.get("font")
-                    color_name = item_data.get("color")
 
-                    item = QGraphicsTextItem(text)
+                    item = QGraphicsTextItem()
+                    item.setHtml(html)
                     item.setPos(*position)
 
-                    # Restore font
-                    if font_str:
-                        font = QFont()
-                        font.fromString(font_str)
-                        item.setFont(font)
-
-                    # Restore color
-                    if color_name:
-                        color = QColor(color_name)
-                        item.setDefaultTextColor(color)
+                    # Set flags
+                    item.setTextInteractionFlags(
+                        Qt.TextInteractionFlag.TextEditable | Qt.TextInteractionFlag.TextEditorInteraction)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsMovable, True)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsSelectable, True)
+                    item.setCursor(QCursor(Qt.CursorShape.IBeamCursor))
 
                     scene.addItem(item)
                     id_item_map[item_id] = item
@@ -500,48 +489,42 @@ def load_project_data(main_window, file_name):
                     # Link the answer items
                     item.answer_items = [id_item_map[aid] for aid in answer_item_ids if aid in id_item_map]
                 elif item_type == "TextItem":
-                    text = item_data.get("text")
+                    html = item_data.get("html")
                     position = item_data.get("position", (0, 0))
-                    font_str = item_data.get("font")
-                    color_name = item_data.get("color")
 
                     # Create the TextItem
-                    item = TextItem(text)
+                    item = TextItem()
+                    item.setHtml(html)
                     item.setPos(*position)
+                    # Set flags
+                    item.setTextInteractionFlags(
+                        Qt.TextInteractionFlag.TextEditable | Qt.TextInteractionFlag.TextEditorInteraction)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsMovable, True)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsSelectable, True)
+                    item.setCursor(QCursor(Qt.CursorShape.IBeamCursor))
 
-                    # Restore font
-                    if font_str:
-                        font = QFont()
-                        font.fromString(font_str)
-                        item.setFont(font)
-
-                    # Restore color
-                    if color_name:
-                        color = QColor(color_name)
-                        item.setDefaultTextColor(color)
+                    # Connect signals
+                    item.itemSelected.connect(main_window.on_text_item_selected)
+                    item.itemDeselected.connect(main_window.on_text_item_deselected)
+                    item.selectionChanged.connect(main_window.on_text_selection_changed)
 
                     scene.addItem(item)
                     # Map ID to item
                     id_item_map[item_id] = item
                 elif item_type == "QGraphicsTextItem":
-                    text = item_data.get("text")
+                    html = item_data.get("html")
                     position = item_data.get("position", (0, 0))
-                    font_str = item_data.get("font")
-                    color_name = item_data.get("color")
 
-                    item = QGraphicsTextItem(text)
+                    item = QGraphicsTextItem()
+                    item.setHtml(html)
                     item.setPos(*position)
 
-                    # Restore font
-                    if font_str:
-                        font = QFont()
-                        font.fromString(font_str)
-                        item.setFont(font)
-
-                    # Restore color
-                    if color_name:
-                        color = QColor(color_name)
-                        item.setDefaultTextColor(color)
+                    # Set flags
+                    item.setTextInteractionFlags(
+                        Qt.TextInteractionFlag.TextEditable | Qt.TextInteractionFlag.TextEditorInteraction)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsMovable, True)
+                    item.setFlag(QGraphicsTextItem.GraphicsItemFlag.ItemIsSelectable, True)
+                    item.setCursor(QCursor(Qt.CursorShape.IBeamCursor))
 
                     scene.addItem(item)
                     id_item_map[item_id] = item
