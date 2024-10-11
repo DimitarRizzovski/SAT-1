@@ -1,20 +1,21 @@
 import os
 import sys
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPainter, QPageSize
+from PyQt6.QtGui import QPainter, QPageSize, QAction
 from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QFileDialog, QGraphicsView, QMessageBox
+    QApplication, QMainWindow, QVBoxLayout, QFileDialog, QGraphicsView, QMessageBox, QListWidgetItem, QWidget
 )
 from PyQt6.uic import loadUi
 from backend import sae, qd
 from backend.connections import setup_ui_elements, setup_connections
 from pages import intro_page, question_page, answer_page
+from backend.usertext import TextItem
 
 
 class MyGui(QMainWindow):
     """
-    Main GUI class for the program
+    Main GUI class for the programme
 
     This class sets up the main window, initialises UI components, manages pages
     (title, question, and answer), and handles user interactions such as adding
@@ -36,6 +37,7 @@ class MyGui(QMainWindow):
         self.questionPageCount = 0  # Counter for question pages
         self.answerPageCount = 0  # Counter for answer pages
         self.selectedPage = None  # Currently selected page
+        self.selectedTextItem = None  # Keep track of the selected TextItem
 
         # Create the saves directory if it doesn't exist
         if not os.path.exists(self.saves_dir):
@@ -44,6 +46,8 @@ class MyGui(QMainWindow):
         # Set up UI elements and their connections
         setup_ui_elements(self)
         setup_connections(self)
+
+        self.setup_text_formatting_controls()
 
         # Create initial pages
         self.create_title_page()
@@ -60,7 +64,85 @@ class MyGui(QMainWindow):
         self.showMaximized()
         self.show()
 
-    def create_page(self, page_type, page_number=None):
+    def setup_text_formatting_controls(self):
+        """Initialise the text formatting buttons and fontsizeBox to be disabled initially."""
+        self.boldButton.setEnabled(False)
+        self.italicButton.setEnabled(False)
+        self.underlineButton.setEnabled(False)
+        self.fontsizeBox.setEnabled(False)  # Disable fontsizeBox initially
+
+    def on_text_item_selected(self, text_item):
+        """Handle the event when a TextItem is selected."""
+        self.selectedTextItem = text_item
+        # Enable the formatting buttons
+        self.boldButton.setEnabled(True)
+        self.italicButton.setEnabled(True)
+        self.underlineButton.setEnabled(True)
+        # Connect signals for selection changes within the TextItem
+        text_item.selectionChanged.connect(self.on_text_selection_changed)
+        # Check if text is selected within the TextItem
+        self.on_text_selection_changed()
+
+    def on_text_item_deselected(self):
+        """Handle the event when a TextItem is deselected."""
+        if self.selectedTextItem:
+            try:
+                self.selectedTextItem.selectionChanged.disconnect(self.on_text_selection_changed)
+            except Exception:
+                pass
+        self.selectedTextItem = None
+        # Disable the formatting buttons and fontsizeBox
+        self.boldButton.setEnabled(False)
+        self.italicButton.setEnabled(False)
+        self.underlineButton.setEnabled(False)
+        self.fontsizeBox.setEnabled(False)
+
+    def on_text_selection_changed(self):
+        """Enable or disable the fontsizeBox based on text selection."""
+        if self.selectedTextItem:
+            cursor = self.selectedTextItem.textCursor()
+            if cursor.hasSelection():
+                self.fontsizeBox.setEnabled(True)
+                current_font_size = cursor.charFormat().fontPointSize()
+                if current_font_size == 0:  # Default font size if not set
+                    current_font_size = self.selectedTextItem.font().pointSize()
+                self.fontsizeBox.blockSignals(True)
+                self.fontsizeBox.setValue(int(current_font_size))
+                self.fontsizeBox.blockSignals(False)
+            else:
+                self.fontsizeBox.setEnabled(False)
+        else:
+            self.fontsizeBox.setEnabled(False)
+
+    def apply_bold(self):
+        """Apply bold formatting to the selected text in the selected TextItem."""
+        if self.selectedTextItem:
+            self.selectedTextItem.applyBold()
+        else:
+            QMessageBox.warning(self, "No Text Selected", "Please select a text item to apply bold formatting.")
+
+    def apply_italic(self):
+        """Apply italic formatting to the selected text in the selected TextItem."""
+        if self.selectedTextItem:
+            self.selectedTextItem.applyItalic()
+        else:
+            QMessageBox.warning(self, "No Text Selected", "Please select a text item to apply italic formatting.")
+
+    def apply_underline(self):
+        """Apply underline formatting to the selected text in the selected TextItem."""
+        if self.selectedTextItem:
+            self.selectedTextItem.applyUnderline()
+        else:
+            QMessageBox.warning(self, "No Text Selected", "Please select a text item to apply underline formatting.")
+
+    def apply_font_size(self, size):
+        """Apply the selected font size to the selected text."""
+        if self.selectedTextItem:
+            self.selectedTextItem.setFontSize(size)
+        else:
+            QMessageBox.warning(self, "No Text Selected", "Please select text to change the font size.")
+
+    def create_page(self, page_type, page_number=None, add_default_items=True):
         """
         Create a new page of the specified type.
 
@@ -77,7 +159,7 @@ class MyGui(QMainWindow):
         if page_type == "Title":
             if page_number is None:
                 page_number = 0
-            page = intro_page.IntroPage(page_number, self)
+            page = intro_page.IntroPage(page_number, self, add_default_items=add_default_items)
             scroll_area_widget_contents = self.scrollAreaTitlePageWidgetContents
         elif page_type == "Question":
             if page_number is None:
@@ -86,6 +168,7 @@ class MyGui(QMainWindow):
             else:
                 self.questionPageCount = max(self.questionPageCount, page_number)
             page = question_page.QuestionPage(page_number, self)
+            page.equation_items = []
             scroll_area_widget_contents = self.scrollAreaQuestionWidgetContents
         elif page_type == "Answer":
             if page_number is None:
@@ -106,7 +189,35 @@ class MyGui(QMainWindow):
 
         # Add the created page to the appropriate scroll area
         scroll_area_widget_contents.layout().addWidget(page)
+
+        # Connect TextItem signals if the page has a scene
+        if hasattr(page, 'scene'):
+            scene = page.scene()
+            if scene:
+                # Connect the scene's selectionChanged signal
+                scene.selectionChanged.connect(self.on_scene_selection_changed)
+
         return page
+
+    def on_scene_selection_changed(self):
+        """
+        Handle changes in the selection within the scene.
+
+        Enables or disables formatting controls based on the selected item.
+        """
+        if self.selectedPage:
+            scene = self.selectedPage.scene()
+            if scene:
+                selected_items = scene.selectedItems()
+                if selected_items:
+                    for item in selected_items:
+                        if isinstance(item, TextItem):
+                            self.on_text_item_selected(item)
+                            return
+                    # If no TextItem is selected
+                    self.on_text_item_deselected()
+                else:
+                    self.on_text_item_deselected()
 
     def create_title_page(self):
         """Create the title page."""
@@ -130,18 +241,7 @@ class MyGui(QMainWindow):
         Returns:
             AnswerPage: The created answer page widget.
         """
-        page = answer_page.AnswerPage(page_number, self)
-        scroll_area_widget_contents = self.scrollAreaAnswersWidgetContents
-
-        # Initialise layout if not already set
-        if scroll_area_widget_contents.layout() is None:
-            layout = QVBoxLayout()
-            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            scroll_area_widget_contents.setLayout(layout)
-
-        # Add the created page to the answers scroll area
-        scroll_area_widget_contents.layout().addWidget(page)
-        self.answerPageCount += 1
+        page = self.create_page("Answer", page_number)
         return page
 
     def get_answer_page(self, page_number):
@@ -172,8 +272,8 @@ class MyGui(QMainWindow):
             if self.selectedPage is None:
                 QMessageBox.warning(self, "No Selection", "Please select a page to delete.")
                 return
-            if self.questionPageCount == 1:
-                QMessageBox.warning(self, "First Page", "You cannot delete the first page")
+            if self.questionPageCount == 1 and isinstance(self.selectedPage, question_page.QuestionPage):
+                QMessageBox.warning(self, "First Page", "You cannot delete the first question page.")
                 return
 
             # Determine which layout contains the selectedPage
@@ -287,6 +387,9 @@ class MyGui(QMainWindow):
                 for item in selected_items:
                     scene.removeItem(item)
                 QMessageBox.information(self, "Deleted", "Selected items have been deleted.")
+            else:
+                # User cancelled deletion
+                pass
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while deleting items: {e}")
 
@@ -298,7 +401,7 @@ class MyGui(QMainWindow):
             index (int): The index of the newly selected tab.
         """
         try:
-            # Deselect all QGraphicsView widgets and reset the boarder
+            # Deselect all QGraphicsView widgets and reset the border
             for view in self.findChildren(QGraphicsView):
                 if hasattr(view, 'isSelected'):
                     view.isSelected = False
@@ -341,7 +444,7 @@ class MyGui(QMainWindow):
             else:
                 item.setHidden(True)
 
-    def add_equation(self, item):
+    def add_equation(self, item: QListWidgetItem):
         """
         Add an equation to the selected page based on the selected item.
 
@@ -430,6 +533,7 @@ class MyGui(QMainWindow):
         try:
             if self.current_save_file:
                 sae.save_project_data(self, self.current_save_file)
+                QMessageBox.information(self, "Success", "Project saved successfully.")
             else:
                 self.save_project_as()
         except Exception as e:
