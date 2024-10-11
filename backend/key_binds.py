@@ -3,8 +3,8 @@ from PyQt6.QtWidgets import QMessageBox, QGraphicsScene
 
 class EquationKeyHandler(QObject):
     """
-    An event filter to handle key bindings within a QGraphicsScene.
-    Specifically listens for the Delete key to remove selected equations.
+    An event filter to handle key bindings within a QGraphicsScene
+    Listens for the Delete key to remove selected equations
     """
 
     def __init__(self, main_window):
@@ -12,27 +12,19 @@ class EquationKeyHandler(QObject):
         self.main_window = main_window
 
     def eventFilter(self, obj, event):
-        # Ensure the event is within a QGraphicsScene
         if isinstance(obj, QGraphicsScene):
             if event.type() == QEvent.Type.KeyPress:
                 if event.key() == Qt.Key.Key_Delete:
                     self.handle_delete_key(obj)
                     return True
-        # For all other events, pass them on
         return super().eventFilter(obj, event)
 
     def handle_delete_key(self, scene):
-        """
-        Deletes the currently selected equation(s) in the scene,
-        and their corresponding answers in the answer page.
-        """
         selected_items = scene.selectedItems()
         if not selected_items:
-            # Inform the user that no equation is selected
             QMessageBox.information(self.main_window, "No Selection", "No equation is selected to delete.")
             return
 
-        # Confirm deletion
         reply = QMessageBox.question(
             self.main_window,
             "Delete Equation",
@@ -42,14 +34,28 @@ class EquationKeyHandler(QObject):
 
         if reply == QMessageBox.StandardButton.Yes:
             for item in selected_items:
-                # Remove answer items if they exist
                 if hasattr(item, 'answer_items'):
                     for answer_item in item.answer_items:
-                        # Remove the answer item from its scene
-                        answer_item.scene().removeItem(answer_item)
-                # Remove the equation item from the scene
+                        answer_scene = answer_item.scene()
+                        if answer_scene is not None:
+                            answer_scene.removeItem(answer_item)
+                        answer_views = answer_scene.views()
+                        if answer_views:
+                            answer_page = answer_views[0]
+                            if hasattr(answer_page, 'answer_items'):
+                                if answer_item in answer_page.answer_items:
+                                    answer_page.answer_items.remove(answer_item)
+                            self.update_answer_positions(answer_page)
                 scene.removeItem(item)
             QMessageBox.information(self.main_window, "Deleted", "Selected equation(s) and their answers have been deleted.")
         else:
-            # User chose not to delete
             pass
+
+    def update_answer_positions(self, answer_page):
+        try:
+            y_pos = 10
+            for item in answer_page.answer_items:
+                item.setPos(0, y_pos)
+                y_pos += item.boundingRect().height() + 5
+        except Exception as e:
+            print(f"An error occurred in update_answer_positions: {e}")
