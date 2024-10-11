@@ -14,7 +14,7 @@ class IntroPage(QGraphicsView):
     Represents the Intro/Title Page with detailed sections.
     """
 
-    def __init__(self, page_number, parent=None):
+    def __init__(self, page_number, parent=None, add_default_items=True):
         scene = QGraphicsScene()
         super().__init__(scene, parent)
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
@@ -28,17 +28,19 @@ class IntroPage(QGraphicsView):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setObjectName(f"Title Page {page_number}")
 
-        # Add Header Section
-        self.add_header_section(scene)
+        if add_default_items:
+            # Add default sections only if add_default_items is True
+            # Add Header Section
+            self.add_header_section(scene)
 
-        # Add Table Section
-        self.add_table_section(scene)
+            # Add Table Section
+            self.add_table_section(scene)
 
-        # Add Instruction Section
-        self.add_instruction_section(scene)
+            # Add Instruction Section
+            self.add_instruction_section(scene)
 
-        # Add Final Instruction
-        self.add_final_instruction(scene)
+            # Add Final Instruction
+            self.add_final_instruction(scene)
 
     def make_editable_text(self, text, font, pos, parent=None):
         """
